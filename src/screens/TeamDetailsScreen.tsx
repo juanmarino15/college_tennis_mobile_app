@@ -1,21 +1,5 @@
-// Format date for display
-const formatDate = (dateString: string) => {
-  try {
-    const date = new Date(dateString);
-    return {
-      weekday: format(date, 'EEE').toUpperCase(),
-      month: format(date, 'MMM').toUpperCase(),
-      day: format(date, 'd'),
-    };
-  } catch (e) {
-    return {
-      weekday: 'TBD',
-      month: 'TBD',
-      day: 'TBD',
-    };
-  }
-}; // src/screens/TeamDetailScreen.tsx
-import React, {useState, useEffect, useContext, useRef} from 'react';
+// src/screens/TeamDetailScreen.tsx
+import React, {useState, useEffect, useContext} from 'react';
 import {
   View,
   Text,
@@ -35,6 +19,24 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import TeamLogo from '../components/TeamLogo';
 import {api, Match, Team, Player} from '../api';
+
+// Format date for display
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return {
+      weekday: format(date, 'EEE').toUpperCase(),
+      month: format(date, 'MMM').toUpperCase(),
+      day: format(date, 'd'),
+    };
+  } catch (e) {
+    return {
+      weekday: 'TBD',
+      month: 'TBD',
+      day: 'TBD',
+    };
+  }
+};
 
 // Define navigation props
 type RootStackParamList = {
@@ -77,6 +79,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [team, setTeam] = useState<Team | null>(null);
   const [roster, setRoster] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [opponentTeams, setOpponentTeams] = useState<Record<string, Team>>({});
   const [stats, setStats] = useState<TeamStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -84,6 +87,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [selectedSeason, setSelectedSeason] = useState<string>('2024');
   const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
+  const [matchSortOrder, setMatchSortOrder] = useState('newest'); // 'newest' or 'oldest'
 
   // Handle season selection
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -112,75 +116,91 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
       setTeam(teamData);
 
-      // Fetch team players (roster)
-      const rosterData = await api.players.getAll(teamId);
-      setRoster(rosterData || []);
+      // Fetch team roster for the selected season
+      let rosterData = [];
+      if (api.teams.getRoster) {
+        // Use the getRoster method if available
+        rosterData = await api.teams.getRoster(teamId, selectedSeason);
+      } else {
+        // Fallback to getAll players and filter by team
+        const allPlayers = await api.players.getAll(teamId);
+        rosterData = allPlayers || [];
+      }
+
+      setRoster(rosterData);
 
       // Fetch matches for this team
-      // Since we don't have getAllByTeam, we'll get all matches and filter
-      const allMatches = await api.matches.getAll();
-      const teamMatches = allMatches.filter(
-        match => match.home_team_id === teamId || match.away_team_id === teamId,
+      let teamMatches = [];
+      if (api.matches.getAllByTeam) {
+        // Use dedicated endpoint if available
+        teamMatches = await api.matches.getAllByTeam(teamId, selectedSeason);
+      } else {
+        // Fallback: get all matches and filter
+        const allMatches = await api.matches.getAll();
+        teamMatches = allMatches.filter(
+          match =>
+            match.home_team_id === teamId || match.away_team_id === teamId,
+        );
+
+        // Optionally filter by season if needed
+        if (selectedSeason) {
+          teamMatches = teamMatches.filter(
+            match => match.season === selectedSeason,
+          );
+        }
+      }
+
+      // Get all opponent team IDs
+      const opponentIds = new Set<string>();
+      teamMatches.forEach(match => {
+        const opponentId =
+          match.home_team_id === teamId
+            ? match.away_team_id
+            : match.home_team_id;
+        if (opponentId) {
+          opponentIds.add(opponentId);
+        }
+      });
+
+      // Fetch all opponent team data
+      const teamsData: Record<string, Team> = {};
+      await Promise.all(
+        Array.from(opponentIds).map(async id => {
+          try {
+            const team = await api.teams.getById(id);
+            teamsData[id] = team;
+          } catch (err) {
+            console.error(`Error fetching team ${id}:`, err);
+          }
+        }),
       );
 
-      // Optionally filter by season if needed
-      const filteredMatches = selectedSeason
-        ? teamMatches.filter(match => match.season === selectedSeason)
-        : teamMatches;
+      setOpponentTeams(teamsData);
+      setMatches(teamMatches);
 
-      setMatches(filteredMatches);
-
-      // For stats, we'll calculate them from match data since we don't have a getTeamStats endpoint
-      if (filteredMatches.length > 0) {
-        const calculatedStats = {
-          total_wins: 0,
-          total_losses: 0,
-          conference_wins: 0,
-          conference_losses: 0,
-          home_wins: 0,
-          home_losses: 0,
-          away_wins: 0,
-          away_losses: 0,
-        };
-
+      // For stats, use dedicated endpoint or calculate from matches
+      let statsData: any = null;
+      if (api.stats && api.stats.getTeamStats) {
+        statsData = await api.stats.getTeamStats(teamId, selectedSeason);
         // Get scores for completed matches
-        const completedMatches = filteredMatches.filter(
-          match => match.completed,
-        );
+        const completedMatches = teamMatches.filter(match => match.completed);
         const scorePromises = completedMatches.map(match =>
           api.matches.getScore(match.id),
         );
 
         const scores = await Promise.all(scorePromises);
 
-        // Create scores map and calculate stats
+        // Create scores map
         const scoresMap: Record<string, any> = {};
         completedMatches.forEach((match, index) => {
-          const score = scores[index];
-          scoresMap[match.id] = score;
-
-          const isHome = match.home_team_id === teamId;
-          const teamWon = isHome
-            ? score.home_team_score > score.away_team_score
-            : score.away_team_score > score.home_team_score;
-
-          if (teamWon) {
-            calculatedStats.total_wins++;
-            if (match.is_conference_match) calculatedStats.conference_wins++;
-            if (isHome) calculatedStats.home_wins++;
-            else calculatedStats.away_wins++;
-          } else {
-            calculatedStats.total_losses++;
-            if (match.is_conference_match) calculatedStats.conference_losses++;
-            if (isHome) calculatedStats.home_losses++;
-            else calculatedStats.away_losses++;
-          }
+          scoresMap[match.id] = scores[index];
         });
 
+        // Make sure to set the match scores here
         setMatchScores(scoresMap);
-        setStats(calculatedStats);
       }
 
+      setStats(statsData);
       setError(null);
     } catch (err) {
       console.error('Error fetching team data:', err);
@@ -218,6 +238,19 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
     // Remove gender markers like (M) or (W) from the name
     return name.replace(/\s*\([MW]\)\s*$/, '');
+  };
+
+  // Get opponent name
+  const getOpponentName = (match: Match): string => {
+    const opponentId =
+      match.home_team_id === teamId ? match.away_team_id : match.home_team_id;
+
+    if (!opponentId) return 'Unknown Team';
+
+    const opponent = opponentTeams[opponentId];
+    if (!opponent || !opponent.name) return 'Unknown Team';
+
+    return cleanTeamName(opponent.name);
   };
 
   if (loading && !refreshing) {
@@ -694,17 +727,14 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
   // Render matches section
   const renderMatches = () => {
-    // Sort matches by date
+    // Sort matches based on selected sort order
     const sortedMatches = [...matches].sort((a, b) => {
-      // Put completed matches first
-      if (a.completed && !b.completed) return -1;
-      if (!a.completed && b.completed) return 1;
-      // Then sort by date (newest first for completed, oldest first for upcoming)
       const dateA = new Date(a.start_date);
       const dateB = new Date(b.start_date);
-      return a.completed
-        ? dateB.getTime() - dateA.getTime()
-        : dateA.getTime() - dateB.getTime();
+
+      return matchSortOrder === 'newest'
+        ? dateB.getTime() - dateA.getTime() // Newest first
+        : dateA.getTime() - dateB.getTime(); // Oldest first
     });
 
     return (
@@ -717,23 +747,107 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
               : theme.colors.card.light,
           },
         ]}>
-        <View style={styles.sectionHeader}>
-          <Icon
-            name="calendar"
-            size={18}
-            color={isDark ? theme.colors.text.dark : theme.colors.gray[700]}
-          />
-          <Text
+        <View style={styles.sectionHeaderWithSort}>
+          <View style={styles.sectionHeader}>
+            <Icon
+              name="calendar"
+              size={18}
+              color={isDark ? theme.colors.text.dark : theme.colors.gray[700]}
+            />
+            <Text
+              style={[
+                styles.sectionTitle,
+                {
+                  color: isDark
+                    ? theme.colors.text.dark
+                    : theme.colors.text.light,
+                },
+              ]}>
+              Schedule & Results
+            </Text>
+          </View>
+
+          {/* Sort Toggle */}
+          <View
             style={[
-              styles.sectionTitle,
+              styles.sortToggleContainer,
               {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
+                borderColor: isDark
+                  ? theme.colors.border.dark
+                  : theme.colors.border.light,
               },
             ]}>
-            Schedule & Results
-          </Text>
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                matchSortOrder === 'newest' && styles.sortButtonActive,
+                {
+                  backgroundColor:
+                    matchSortOrder === 'newest'
+                      ? isDark
+                        ? theme.colors.primary[900]
+                        : theme.colors.primary[100]
+                      : 'transparent',
+                },
+              ]}
+              onPress={() => setMatchSortOrder('newest')}>
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  matchSortOrder === 'newest' && {
+                    color: isDark
+                      ? theme.colors.primary[400]
+                      : theme.colors.primary[600],
+                    fontWeight: '600',
+                  },
+                  {
+                    color:
+                      matchSortOrder !== 'newest'
+                        ? isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500]
+                        : undefined,
+                  },
+                ]}>
+                Latest
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                matchSortOrder === 'oldest' && styles.sortButtonActive,
+                {
+                  backgroundColor:
+                    matchSortOrder === 'oldest'
+                      ? isDark
+                        ? theme.colors.primary[900]
+                        : theme.colors.primary[100]
+                      : 'transparent',
+                },
+              ]}
+              onPress={() => setMatchSortOrder('oldest')}>
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  matchSortOrder === 'oldest' && {
+                    color: isDark
+                      ? theme.colors.primary[400]
+                      : theme.colors.primary[600],
+                    fontWeight: '600',
+                  },
+                  {
+                    color:
+                      matchSortOrder !== 'oldest'
+                        ? isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500]
+                        : undefined,
+                  },
+                ]}>
+                Earliest
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {sortedMatches.length === 0 ? (
@@ -751,24 +865,56 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
         ) : (
           sortedMatches.map(match => {
             const dateInfo = formatDate(match.start_date);
-            const opponent_id =
-              match.home_team_id === teamId
-                ? match.away_team_id
-                : match.home_team_id;
             const isHome = match.home_team_id === teamId;
-            const score = matchScores[match.id];
+            const opponentId = isHome ? match.away_team_id : match.home_team_id;
 
-            // Determine if team won
+            // Console log the time data for debugging
+            console.log(`Match ID: ${match.id}`);
+            console.log(`Raw start_date: ${match.start_date}`);
+            console.log(`Raw scheduled_time: ${match.scheduled_time}`);
+            console.log(
+              `Formatted time: ${
+                match.scheduled_time
+                  ? format(new Date(match.scheduled_time), 'h:mm a')
+                  : 'TBA'
+              }`,
+            );
+
+            // Declare variables for result display
             let teamWon = false;
             let scoreDisplay = '';
 
-            if (match.completed && score) {
-              if (isHome) {
-                teamWon = score.home_team_score > score.away_team_score;
-                scoreDisplay = `${score.home_team_score}-${score.away_team_score}`;
+            // Determine result display
+            if (match.completed) {
+              // Get score data from our scores map
+              const score = matchScores[match.id];
+
+              if (score) {
+                const isHome = match.home_team_id === teamId;
+
+                // Determine if team won and format score string
+                if (isHome) {
+                  teamWon = score.home_team_won;
+
+                  // Format: W, 4-2 or L, 2-4
+                  if (teamWon) {
+                    scoreDisplay = `W, ${score.home_team_score}-${score.away_team_score}`;
+                  } else {
+                    scoreDisplay = `L, ${score.home_team_score}-${score.away_team_score}`;
+                  }
+                } else {
+                  teamWon = score.away_team_won;
+
+                  // Format: W, 4-2 or L, 2-4
+                  if (teamWon) {
+                    scoreDisplay = `W, ${score.away_team_score}-${score.home_team_score}`;
+                  } else {
+                    scoreDisplay = `L, ${score.home_team_score}-${score.away_team_score}`;
+                  }
+                }
               } else {
-                teamWon = score.away_team_score > score.home_team_score;
-                scoreDisplay = `${score.away_team_score}-${score.home_team_score}`;
+                // Fallback if no score available
+                scoreDisplay = 'Result TBD';
               }
             }
 
@@ -832,7 +978,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
                   {/* Opponent Section */}
                   <View style={styles.matchOpponentSection}>
-                    <TeamLogo teamId={opponent_id || ''} size="small" />
+                    <TeamLogo teamId={opponentId || ''} size="small" />
                     <Text
                       style={[
                         styles.opponentName,
@@ -842,9 +988,8 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                             : theme.colors.text.light,
                         },
                       ]}
-                      numberOfLines={1}>
-                      {/* Clean the opponent name if available */}
-                      {opponent_id ? cleanTeamName('Opponent') : 'Unknown'}
+                      numberOfLines={2}>
+                      {getOpponentName(match)}
                     </Text>
                   </View>
 
@@ -872,7 +1017,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                                 : theme.colors.error,
                             },
                           ]}>
-                          {teamWon ? 'W' : 'L'}, {scoreDisplay}
+                          {scoreDisplay}
                         </Text>
                       </View>
                     ) : (
@@ -1102,12 +1247,33 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  sectionHeaderWithSort: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: theme.spacing[4],
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: '600',
     marginLeft: theme.spacing[2],
+  },
+  sortToggleContainer: {
+    flexDirection: 'row',
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  sortButton: {
+    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+  },
+  sortButtonActive: {
+    borderRadius: theme.borderRadius.sm,
+  },
+  sortButtonText: {
+    fontSize: theme.typography.fontSize.xs,
   },
   emptyStateText: {
     textAlign: 'center',
@@ -1181,12 +1347,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[2],
+    minHeight: 50, // Ensure minimum height for opponent section
   },
   opponentName: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: '500',
     marginLeft: theme.spacing[2],
     flex: 1,
+    height: 40, // More height for two lines of text
+    lineHeight: 20, // Adjust line height for comfortable reading
+    flexWrap: 'wrap', // Allow text to wrap
   },
   matchResultSection: {
     width: 80,

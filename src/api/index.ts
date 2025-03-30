@@ -59,6 +59,19 @@ export interface MatchLineup {
 export interface MatchScore {
   home_team_score: number;
   away_team_score: number;
+  home_team_won?: boolean;
+  away_team_won?: boolean;
+}
+
+export interface TeamStats {
+  total_wins: number;
+  total_losses: number;
+  conference_wins: number;
+  conference_losses: number;
+  home_wins: number;
+  home_losses: number;
+  away_wins: number;
+  away_losses: number;
 }
 
 // Create axios instance
@@ -147,6 +160,38 @@ export const api = {
         throw error;
       }
     },
+
+    // New method for getting team matches by season
+    getAllByTeam: async (teamId: string, season?: string): Promise<Match[]> => {
+      const params: any = {team_id: teamId};
+      if (season) {
+        params.season = season;
+      }
+
+      try {
+        // First try using the dedicated endpoint if available on the server
+        try {
+          const response: AxiosResponse<Match[]> = await apiClient.get(
+            `/matches/by-team/${teamId}`,
+            {params: season ? {season} : {}},
+          );
+          return response.data;
+        } catch (routeError) {
+          // If the dedicated endpoint is not available, fall back to filtering all matches
+          console.log(
+            'Dedicated team matches endpoint not available, using fallback',
+          );
+          const allMatches: AxiosResponse<Match[]> = await apiClient.get(
+            '/matches',
+            {params},
+          );
+          return allMatches.data;
+        }
+      } catch (error) {
+        console.error(`Failed to fetch matches for team ${teamId}:`, error);
+        throw error;
+      }
+    },
   },
 
   // Teams endpoints
@@ -179,6 +224,21 @@ export const api = {
       // In React Native, we'll return the URL rather than a blob
       return `${BASE_URL}/teams/${id}/logo`;
     },
+
+    // New method to get team roster by season
+    getRoster: async (id: string, year?: string): Promise<Player[]> => {
+      const params = year ? {year} : {};
+      try {
+        const response: AxiosResponse<Player[]> = await apiClient.get(
+          `/teams/${id}/roster`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch roster for team ${id}:`, error);
+        throw error;
+      }
+    },
   },
 
   // Players endpoints
@@ -205,6 +265,40 @@ export const api = {
         return response.data;
       } catch (error) {
         console.error(`Failed to fetch player ${id}:`, error);
+        throw error;
+      }
+    },
+  },
+
+  // Stats endpoints
+  stats: {
+    getTeamStats: async (
+      teamId: string,
+      season?: string,
+    ): Promise<TeamStats> => {
+      const params = season ? {season} : {};
+      try {
+        const response: AxiosResponse<TeamStats> = await apiClient.get(
+          `/stats/teams/${teamId}`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch stats for team ${teamId}:`, error);
+        throw error;
+      }
+    },
+
+    getPlayerStats: async (playerId: string, season?: string): Promise<any> => {
+      const params = season ? {season} : {};
+      try {
+        const response: AxiosResponse<any> = await apiClient.get(
+          `/stats/players/${playerId}`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch stats for player ${playerId}:`, error);
         throw error;
       }
     },
