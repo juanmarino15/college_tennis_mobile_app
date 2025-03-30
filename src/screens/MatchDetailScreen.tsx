@@ -180,6 +180,10 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
     .filter(match => match.match_type === 'SINGLES')
     .sort((a, b) => a.position - b.position);
 
+  const formatTeamName = (name?: string): string => {
+    return name ? name.replace(/\s*\((M|W)\)$/, '') : 'Unknown Team';
+  };
+
   // Render loading state
   if (loading && !refreshing) {
     return (
@@ -236,18 +240,6 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
     return null;
   }
 
-  // Add these debug logs at the beginning of your render function
-  // console.log('Match data:', match?.id, 'Lineup:', lineup);
-  // console.log('Home team score:', matchScore?.home_team_score, 'Away team score:', matchScore?.away_team_score);
-
-  // // For each individual match within the lineup, add:
-  // lineup.forEach(individualMatch => {
-  //   console.log('Match position:', individualMatch.position,
-  //               'Side1 won:', individualMatch.side1_won,
-  //               'Side2 won:', individualMatch.side2_won,
-  //               'Score:', individualMatch.side1_score);
-  // });
-
   return (
     <ScrollView
       style={[
@@ -291,7 +283,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                 },
                 match.is_conference_match && styles.conferenceTeam,
               ]}>
-              {teams.home.name}
+              {formatTeamName(teams.home.name)}
             </Text>
             {teams.home.conference && (
               <Text
@@ -355,7 +347,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                 },
                 match.is_conference_match && styles.conferenceTeam,
               ]}>
-              {teams.away.name}
+              {formatTeamName(teams.away.name)}
             </Text>
             {teams.away.conference && (
               <Text
@@ -375,6 +367,26 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
         {/* Match Details Row */}
         <View style={styles.detailsRow}>
+          <View style={styles.detailItem}>
+            <Icon
+              name="users"
+              size={16}
+              color={
+                isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
+              }
+            />
+            <Text
+              style={[
+                styles.detailText,
+                {
+                  color: isDark
+                    ? theme.colors.text.dimDark
+                    : theme.colors.gray[600],
+                },
+              ]}>
+              {match.gender === 'MALE' ? 'Men' : 'Women'}
+            </Text>
+          </View>
           <View style={styles.detailItem}>
             <Icon
               name="calendar"
@@ -1119,6 +1131,20 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: theme.spacing[10],
+  },
+  genderBadgeContainer: {
+    position: 'absolute',
+    top: theme.spacing[2],
+    left: theme.spacing[2],
+    zIndex: 10,
+  },
+  genderBadge: {
+    fontSize: theme.typography.fontSize.sm,
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[0.5],
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
+    fontWeight: '600',
   },
 });
 export default MatchDetailScreen;

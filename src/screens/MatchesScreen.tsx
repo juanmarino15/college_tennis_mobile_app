@@ -230,12 +230,30 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
     navigation.navigate('MatchDetail', {matchId});
   };
 
+  const formatTeamName = (name?: string): string => {
+    return name ? name.replace(/\s*\((M|W)\)$/, '') : 'Unknown Team';
+  };
+
+  // Extract gender from team name or from match data
+  const getTeamGender = (
+    teamName?: string,
+    match?: Match,
+  ): 'MALE' | 'FEMALE' => {
+    if (teamName?.includes('(M)')) return 'MALE';
+    if (teamName?.includes('(W)')) return 'FEMALE';
+
+    // Fallback to match gender
+    return match?.gender === 'MALE' ? 'MALE' : 'FEMALE';
+  };
+
   // Render match item
   const renderMatchItem = ({item}: {item: Match}) => {
     const homeTeam = teams[item.home_team_id || ''];
     const awayTeam = teams[item.away_team_id || ''];
-
     const matchScore = matchScores[item.id];
+
+    // Get gender of the match (should be the same for both teams)
+    const gender = item.gender;
 
     return (
       <TouchableOpacity
@@ -253,7 +271,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         <View style={styles.matchContent}>
           {/* Home Team */}
           <View style={styles.teamContainer}>
-            <TeamLogo teamId={item.home_team_id} size="medium" />
+            <TeamLogo teamId={item.home_team_id} size="small" />
             <Text
               style={[
                 styles.teamName,
@@ -264,7 +282,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
                 },
               ]}
               numberOfLines={2}>
-              {homeTeam?.name || 'Team A'}
+              {formatTeamName(homeTeam?.name)}
             </Text>
           </View>
 
@@ -281,7 +299,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
                         : theme.colors.text.light,
                     },
                   ]}>
-                  {matchScores
+                  {matchScore
                     ? `${matchScore.home_team_score} - ${matchScore.away_team_score}`
                     : '- -'}
                 </Text>
@@ -355,9 +373,27 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
                 },
               ]}
               numberOfLines={2}>
-              {awayTeam?.name || 'Team B'}
+              {formatTeamName(awayTeam?.name)}
             </Text>
           </View>
+        </View>
+
+        {/* Gender Badge */}
+        <View style={styles.genderBadgeContainer}>
+          <Text
+            style={[
+              styles.genderBadge,
+              {
+                backgroundColor: isDark
+                  ? theme.colors.gray[800]
+                  : theme.colors.gray[100],
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+            ]}>
+            {gender === 'MALE' ? 'M' : 'W'}
+          </Text>
         </View>
 
         {/* Conference Match Indicator */}
@@ -367,6 +403,110 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
           </View>
         )}
       </TouchableOpacity>
+    );
+  };
+
+  // First, let's separate matches into completed and upcoming
+  const renderMatchList = () => {
+    // Filter completed matches
+    const completedMatches = filteredMatches.filter(match => match.completed);
+
+    // Filter upcoming matches
+    const upcomingMatches = filteredMatches.filter(match => !match.completed);
+
+    // If no matches at all, show empty state
+    if (completedMatches.length === 0 && upcomingMatches.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Icon
+            name="calendar"
+            size={48}
+            color={isDark ? theme.colors.gray[600] : theme.colors.gray[400]}
+          />
+          <Text
+            style={[
+              styles.emptyText,
+              {color: isDark ? theme.colors.text.dark : theme.colors.gray[600]},
+            ]}>
+            No matches found
+          </Text>
+          <Text
+            style={[
+              styles.emptySubtext,
+              {
+                color: isDark
+                  ? theme.colors.text.dimDark
+                  : theme.colors.gray[500],
+              },
+            ]}>
+            Try changing the date or filters
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={[...completedMatches, ...upcomingMatches]}
+        renderItem={({item, index}) => {
+          // Add divider if this is the first upcoming match after completed matches
+          const showDivider =
+            completedMatches.length > 0 &&
+            upcomingMatches.length > 0 &&
+            index === completedMatches.length;
+
+          return (
+            <>
+              {showDivider && (
+                <View style={styles.dividerContainer}>
+                  <View
+                    style={[
+                      styles.divider,
+                      {
+                        backgroundColor: isDark
+                          ? theme.colors.border.dark
+                          : theme.colors.border.light,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.dividerText,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500],
+                      },
+                    ]}>
+                    Matches Without Reported Scores
+                  </Text>
+                  <View
+                    style={[
+                      styles.divider,
+                      {
+                        backgroundColor: isDark
+                          ? theme.colors.border.dark
+                          : theme.colors.border.light,
+                      },
+                    ]}
+                  />
+                </View>
+              )}
+              {renderMatchItem({item})}
+            </>
+          );
+        }}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.matchesList}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary[500]]}
+            tintColor={theme.colors.primary[500]}
+          />
+        }
+      />
     );
   };
 
@@ -740,6 +880,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
       )}
 
       {/* Matches List */}
+      {/* Matches List */}
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary[500]} />
@@ -763,47 +904,8 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : filteredMatches.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Icon
-            name="calendar"
-            size={48}
-            color={isDark ? theme.colors.gray[600] : theme.colors.gray[400]}
-          />
-          <Text
-            style={[
-              styles.emptyText,
-              {color: isDark ? theme.colors.text.dark : theme.colors.gray[600]},
-            ]}>
-            No matches found
-          </Text>
-          <Text
-            style={[
-              styles.emptySubtext,
-              {
-                color: isDark
-                  ? theme.colors.text.dimDark
-                  : theme.colors.gray[500],
-              },
-            ]}>
-            Try changing the date or filters
-          </Text>
-        </View>
       ) : (
-        <FlatList
-          data={filteredMatches}
-          renderItem={renderMatchItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.matchesList}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary[500]]}
-              tintColor={theme.colors.primary[500]}
-            />
-          }
-        />
+        renderMatchList()
       )}
     </View>
   );
@@ -989,6 +1091,35 @@ const styles = StyleSheet.create({
   conferenceText: {
     fontSize: 10,
     color: theme.colors.primary[700],
+  },
+
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: theme.spacing[4],
+    paddingHorizontal: theme.spacing[2],
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: theme.spacing[2],
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '500',
+  },
+  genderBadgeContainer: {
+    position: 'absolute',
+    top: theme.spacing[1],
+    left: theme.spacing[1],
+  },
+  genderBadge: {
+    fontSize: 10,
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[0.5],
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
+    fontWeight: '500',
   },
 });
 

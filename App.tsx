@@ -19,15 +19,12 @@ import MaterialIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import HomeScreen from './src/screens/HomeScreen';
 import MatchesScreen from './src/screens/MatchesScreen';
 import MatchDetailScreen from './src/screens/MatchDetailScreen';
-// import TeamsScreen from './src/screens/TeamsScreen';
-// import TeamDetailScreen from './src/screens/TeamDetailScreen';
+import TeamsScreen from './src/screens/TeamsScreen';
+import TeamDetailScreen from './src/screens/TeamDetailsScreen';
 // import PlayerDetailScreen from './src/screens/PlayerDetailScreen';
 
 // For now, use placeholders
 const PlaceholderScreen = () => <></>;
-// const MatchDetailScreen = PlaceholderScreen;
-const TeamsScreen = PlaceholderScreen;
-const TeamDetailScreen = PlaceholderScreen;
 const PlayerDetailScreen = PlaceholderScreen;
 
 // Ignore specific warnings
