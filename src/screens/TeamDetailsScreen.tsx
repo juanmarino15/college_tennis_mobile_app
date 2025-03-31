@@ -253,6 +253,56 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
     return cleanTeamName(opponent.name);
   };
 
+  // Function to get timezone abbreviation
+  const getTimezoneAbbr = (timezone: string) => {
+    try {
+      // This uses Intl.DateTimeFormat to get the timezone abbreviation
+      const date = new Date();
+      return (
+        new Intl.DateTimeFormat('en-US', {
+          timeZone: timezone,
+          timeZoneName: 'short',
+        })
+          .formatToParts(date)
+          .find(part => part.type === 'timeZoneName')?.value || timezone
+      );
+    } catch (e) {
+      console.error('Error getting timezone abbreviation:', e);
+      return timezone; // Return the original timezone string if can't get abbreviation
+    }
+  };
+
+  // Format time with timezone consideration
+  const formatTimeWithTimezone = (timeString: string, timezone: string) => {
+    try {
+      // Parse the date as UTC/GMT
+      // First ensure the string ends with 'Z' to indicate UTC time
+      const utcTimeString = timeString.endsWith('Z')
+        ? timeString
+        : `${timeString}Z`;
+      const date = new Date(utcTimeString);
+
+      // Format options with the specified timezone
+      const options: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: timezone,
+      };
+
+      // Format the time in the specified timezone
+      return new Intl.DateTimeFormat('en-US', options).format(date);
+    } catch (e) {
+      console.error('Error formatting time with timezone:', e);
+      // Fallback to basic formatting
+      try {
+        return format(new Date(timeString), 'h:mm a');
+      } catch (fallbackError) {
+        return 'TBA';
+      }
+    }
+  };
+
   if (loading && !refreshing) {
     return (
       <View
@@ -262,6 +312,8 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
             backgroundColor: isDark
               ? theme.colors.background.dark
               : theme.colors.background.light,
+            justifyContent: 'center',
+            alignItems: 'center',
           },
         ]}>
         <ActivityIndicator size="large" color={theme.colors.primary[500]} />
@@ -869,14 +921,21 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
             const opponentId = isHome ? match.away_team_id : match.home_team_id;
 
             // Console log the time data for debugging
+            // Console log the time data for debugging
             console.log(`Match ID: ${match.id}`);
             console.log(`Raw start_date: ${match.start_date}`);
             console.log(`Raw scheduled_time: ${match.scheduled_time}`);
+            console.log(`Timezone: ${match.timezone}`);
             console.log(
               `Formatted time: ${
-                match.scheduled_time
-                  ? format(new Date(match.scheduled_time), 'h:mm a')
+                match.scheduled_time && match.timezone
+                  ? formatTimeWithTimezone(match.scheduled_time, match.timezone)
                   : 'TBA'
+              }`,
+            );
+            console.log(
+              `Timezone abbreviation: ${
+                match.timezone ? getTimezoneAbbr(match.timezone) : 'N/A'
               }`,
             );
 
@@ -1021,19 +1080,38 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                         </Text>
                       </View>
                     ) : (
-                      <Text
-                        style={[
-                          styles.matchTime,
-                          {
-                            color: isDark
-                              ? theme.colors.text.dimDark
-                              : theme.colors.gray[600],
-                          },
-                        ]}>
-                        {match.scheduled_time
-                          ? format(new Date(match.scheduled_time), 'h:mm a')
-                          : 'TBA'}
-                      </Text>
+                      <View>
+                        <Text
+                          style={[
+                            styles.matchTime,
+                            {
+                              color: isDark
+                                ? theme.colors.text.dimDark
+                                : theme.colors.gray[600],
+                            },
+                          ]}>
+                          {match.scheduled_time && match.timezone
+                            ? formatTimeWithTimezone(
+                                match.scheduled_time,
+                                match.timezone,
+                              )
+                            : 'TBA'}
+                        </Text>
+
+                        {match.scheduled_time && match.timezone && (
+                          <Text
+                            style={[
+                              styles.timezoneText,
+                              {
+                                color: isDark
+                                  ? theme.colors.text.dimDark
+                                  : theme.colors.gray[500],
+                              },
+                            ]}>
+                            {getTimezoneAbbr(match.timezone)}
+                          </Text>
+                        )}
+                      </View>
                     )}
                   </View>
                 </View>
@@ -1063,13 +1141,6 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
           size={24}
           color={isDark ? theme.colors.text.dark : theme.colors.gray[700]}
         />
-        <Text
-          style={[
-            styles.backButtonText,
-            {color: isDark ? theme.colors.text.dark : theme.colors.gray[700]},
-          ]}>
-          Back
-        </Text>
       </TouchableOpacity>
 
       <ScrollView
@@ -1374,6 +1445,10 @@ const styles = StyleSheet.create({
   },
   matchTime: {
     fontSize: theme.typography.fontSize.sm,
+  },
+  timezoneText: {
+    fontSize: theme.typography.fontSize.xs,
+    marginTop: 2,
   },
 });
 
