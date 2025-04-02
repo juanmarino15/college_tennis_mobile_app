@@ -21,11 +21,10 @@ import MatchesScreen from './src/screens/MatchesScreen';
 import MatchDetailScreen from './src/screens/MatchDetailScreen';
 import TeamsScreen from './src/screens/TeamsScreen';
 import TeamDetailScreen from './src/screens/TeamDetailsScreen';
-// import PlayerDetailScreen from './src/screens/PlayerDetailScreen';
+import PlayerScreen from './src/screens/PlayerScreen';
 
 // For now, use placeholders
 const PlaceholderScreen = () => <></>;
-const PlayerDetailScreen = PlaceholderScreen;
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -171,10 +170,7 @@ const App = () => {
               <Stack.Screen name="MainTabs" component={TabNavigator} />
               <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
               <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
-              <Stack.Screen
-                name="PlayerDetail"
-                component={PlayerDetailScreen}
-              />
+              <Stack.Screen name="PlayerDetail" component={PlayerScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

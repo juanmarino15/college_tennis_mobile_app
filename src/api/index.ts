@@ -73,6 +73,53 @@ export interface TeamStats {
   away_wins: number;
   away_losses: number;
 }
+// Add these interfaces to your existing types section
+export interface PlayerStats {
+  singles_wins: number;
+  singles_losses: number;
+  singles_win_pct: number;
+  doubles_wins: number;
+  doubles_losses: number;
+  doubles_win_pct: number;
+  wtn_singles?: number;
+  wtn_doubles?: number;
+}
+
+export interface PlayerTeam {
+  team_id: string;
+  team_name: string;
+  abbreviation?: string;
+  conference?: string;
+  gender?: string;
+}
+
+export interface PlayerPosition {
+  position: number;
+  matches_count: number;
+  wins: number;
+  losses: number;
+}
+
+export interface PlayerPositions {
+  singles: PlayerPosition[];
+  doubles: PlayerPosition[];
+}
+
+export interface PlayerMatchResult {
+  id: string;
+  match_id: string;
+  date: string;
+  opponent_name: string;
+  opponent_team_id?: string;
+  is_home: boolean;
+  match_type: string;
+  position: number;
+  score: string;
+  won: boolean;
+  partner_name?: string;
+  opponent_name1: string;
+  opponent_name2?: string;
+}
 
 // Create axios instance
 const apiClient = axios.create({
@@ -265,6 +312,73 @@ export const api = {
         return response.data;
       } catch (error) {
         console.error(`Failed to fetch player ${id}:`, error);
+        throw error;
+      }
+    },
+    getTeam: async (id: string, season?: string): Promise<PlayerTeam> => {
+      const params = season ? {season} : {};
+      try {
+        const response: AxiosResponse<PlayerTeam> = await apiClient.get(
+          `/players/${id}/team`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch team for player ${id}:`, error);
+        throw error;
+      }
+    },
+    getStats: async (id: string, season?: string): Promise<PlayerStats> => {
+      const params = season ? {season} : {};
+      try {
+        const response: AxiosResponse<PlayerStats> = await apiClient.get(
+          `/players/${id}/stats`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch stats for player ${id}:`, error);
+        throw error;
+      }
+    },
+    getPositions: async (
+      id: string,
+      season?: string,
+    ): Promise<PlayerPositions> => {
+      const params = season ? {season} : {};
+      try {
+        const response: AxiosResponse<PlayerPositions> = await apiClient.get(
+          `/players/${id}/positions`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch positions for player ${id}:`, error);
+        throw error;
+      }
+    },
+    getMatchResults: async (
+      id: string,
+      season?: string,
+    ): Promise<PlayerMatchResult[]> => {
+      const params = season ? {season} : {};
+      try {
+        const response: AxiosResponse<PlayerMatchResult[]> =
+          await apiClient.get(`/players/${id}/match-results`, {params});
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch match results for player ${id}:`, error);
+        throw error;
+      }
+    },
+    getWTN: async (id: string): Promise<any> => {
+      try {
+        const response: AxiosResponse<any> = await apiClient.get(
+          `/players/${id}/wtn`,
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch WTN for player ${id}:`, error);
         throw error;
       }
     },
