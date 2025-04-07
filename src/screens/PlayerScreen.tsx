@@ -19,6 +19,8 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
+import PositionBarChart from '../components/PositionBarChart';
+import {Alert} from 'react-native';
 
 // Define navigation props
 type RootStackParamList = {
@@ -120,7 +122,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   };
 
   // Fetch player data
-  // Fetch player data
   const fetchPlayerData = async () => {
     try {
       setLoading(true);
@@ -217,6 +218,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const fetchPlayerPositions = async (playerId: string, season: string) => {
     try {
       const positionsData = await api.players.getPositions(playerId, season);
+      console.log(positionsData);
 
       // Convert the API response to the chart format
       const chartData: any = [];
@@ -573,7 +575,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 </Text>
               </View>
               <View style={styles.statDivider} />
-              <View style={styles.statItem}>
+              {/* <View style={styles.statItem}>
                 <Text
                   style={[
                     styles.statValue,
@@ -596,7 +598,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                   ]}>
                   WTN
                 </Text>
-              </View>
+              </View> */}
             </View>
           </View>
 
@@ -675,7 +677,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 </Text>
               </View>
               <View style={styles.statDivider} />
-              <View style={styles.statItem}>
+              {/* <View style={styles.statItem}>
                 <Text
                   style={[
                     styles.statValue,
@@ -698,7 +700,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                   ]}>
                   WTN
                 </Text>
-              </View>
+              </View> */}
             </View>
           </View>
         </View>
@@ -735,25 +737,15 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                   : theme.colors.text.light,
               },
             ]}>
-            Singles Positions
+            Position Performance
           </Text>
         </View>
 
-        <View style={styles.chartContainer}>
-          {/* This would be a BarChart component from a charting library */}
-          <Text
-            style={{
-              textAlign: 'center',
-              color: isDark
-                ? theme.colors.text.dimDark
-                : theme.colors.gray[600],
-            }}>
-            {positionData
-              .map(d => `${d.name}: ${d.matches} matches`)
-              .join(' | ')}
-          </Text>
-          {/* For actual implementation, use a proper chart library compatible with React Native */}
-        </View>
+        <PositionBarChart
+          positionData={positionData}
+          isDark={isDark}
+          theme={theme}
+        />
       </View>
     );
   };
@@ -1356,6 +1348,11 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: '600',
+  },
+  chartCaption: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 10,
   },
 });
 
