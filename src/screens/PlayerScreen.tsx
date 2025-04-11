@@ -102,7 +102,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [playerTeam, setPlayerTeam] = useState<TeamInfo | null>(null);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
-  const [positionData, setPositionData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
