@@ -109,6 +109,27 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [selectedSeason, setSelectedSeason] = useState<string>('2024');
   const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [positionsData, setPositionsData] = useState<{
+    singles: Array<{
+      position: number;
+      matches_count: number;
+      wins: number;
+      losses: number;
+    }>;
+    doubles: Array<{
+      position: number;
+      matches_count: number;
+      wins: number;
+      losses: number;
+    }>;
+  }>({singles: [], doubles: []});
+  const [matchTypeFilter, setMatchTypeFilter] = useState<
+    'all' | 'dual' | 'non-dual'
+  >('all');
+  const [filteredMatches, setFilteredMatches] = useState<MatchResult[]>([]);
+  const [calculatedStats, setCalculatedStats] = useState<PlayerStats | null>(
+    null,
+  );
 
   // Toggle dropdown for season selection
   const toggleDropdown = () => {
@@ -137,10 +158,10 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       // Fetch player match results
       const results: any = await fetchPlayerMatches(playerId, selectedSeason);
       setMatchResults(results);
+      setFilteredMatches(results);
 
-      // Fetch player stats
-      const stats = await fetchPlayerStats(playerId, selectedSeason);
-      setPlayerStats(stats);
+      // Initially calculate stats based on all matches
+      setCalculatedStats(calculateStatsFromFilteredMatches(results));
 
       // Fetch position data directly
       await fetchPlayerPositions(playerId, selectedSeason);
@@ -177,20 +198,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     }
   };
 
-  // Fetch player stats
-  const fetchPlayerStats = async (playerId: string, season: string) => {
-    try {
-      // Use the player stats endpoint directly
-      return await api.players.getStats(playerId, season);
-    } catch (err) {
-      console.error('Error fetching player stats:', err);
-      // Fallback to calculation if API call fails
-      return calculateStatsFromMatches(matchResults);
-    }
-  };
-
-  // Calculate stats from match results
-  const calculateStatsFromMatches = (matches: MatchResult[]) => {
+  const calculateStatsFromFilteredMatches = (matches: MatchResult[]) => {
     const singles = matches.filter(match => match.match_type === 'SINGLES');
     const doubles = matches.filter(match => match.match_type === 'DOUBLES');
 
@@ -211,6 +219,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       doubles_wins: doublesWins,
       doubles_losses: doublesLosses,
       doubles_win_pct: doublesWinPct,
+      wtn_singles: playerStats?.wtn_singles, // Keep WTN ratings from API
+      wtn_doubles: playerStats?.wtn_doubles, // Keep WTN ratings from API
     };
   };
 
@@ -220,20 +230,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       const positionsData = await api.players.getPositions(playerId, season);
       console.log(positionsData);
 
-      // Convert the API response to the chart format
-      const chartData: any = [];
-
-      // Process singles positions
-      positionsData.singles.forEach(pos => {
-        chartData.push({
-          name: `#${pos.position}`,
-          matches: pos.matches_count,
-          wins: pos.wins,
-          losses: pos.losses,
-        });
-      });
-
-      setPositionData(chartData);
+      // Store the complete positions data
+      setPositionsData(positionsData);
     } catch (err) {
       console.error('Error fetching player positions:', err);
     }
@@ -243,6 +241,35 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   useEffect(() => {
     fetchPlayerData();
   }, [playerId, selectedSeason]);
+
+  // This function determines if a match is a dual match
+  const isDualMatch = (match: MatchResult) => {
+    return match.position > 0;
+  };
+
+  // This function classifies the match type
+  const getMatchType = (match: MatchResult) => {
+    return isDualMatch(match) ? 'dual' : 'non-dual';
+  };
+
+  // Filter matches based on match type
+  useEffect(() => {
+    if (matchResults.length > 0) {
+      let filtered = [...matchResults];
+
+      // Apply match type filter
+      if (matchTypeFilter === 'dual') {
+        filtered = filtered.filter(match => isDualMatch(match));
+      } else if (matchTypeFilter === 'non-dual') {
+        filtered = filtered.filter(match => !isDualMatch(match));
+      }
+
+      setFilteredMatches(filtered);
+
+      // Calculate stats based on filtered matches
+      setCalculatedStats(calculateStatsFromFilteredMatches(filtered));
+    }
+  }, [matchResults, matchTypeFilter]);
 
   // Handle pull-to-refresh
   const handleRefresh = () => {
@@ -497,8 +524,96 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
         </Modal>
       </View>
 
+      {/* Match Type Filter */}
+      <View style={styles.matchTypeFilter}>
+        <TouchableOpacity
+          style={[
+            styles.filterOption,
+            matchTypeFilter === 'all' && styles.filterOptionActive,
+            {
+              backgroundColor:
+                matchTypeFilter === 'all'
+                  ? theme.colors.primary[500]
+                  : isDark
+                  ? theme.colors.background.dark
+                  : theme.colors.gray[100],
+            },
+          ]}
+          onPress={() => setMatchTypeFilter('all')}>
+          <Text
+            style={{
+              color:
+                matchTypeFilter === 'all'
+                  ? theme.colors.white
+                  : isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.gray[700],
+              fontSize: theme.typography.fontSize.xs,
+              fontWeight: '600',
+            }}>
+            All
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.filterOption,
+            matchTypeFilter === 'dual' && styles.filterOptionActive,
+            {
+              backgroundColor:
+                matchTypeFilter === 'dual'
+                  ? theme.colors.primary[500]
+                  : isDark
+                  ? theme.colors.background.dark
+                  : theme.colors.gray[100],
+            },
+          ]}
+          onPress={() => setMatchTypeFilter('dual')}>
+          <Text
+            style={{
+              color:
+                matchTypeFilter === 'dual'
+                  ? theme.colors.white
+                  : isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.gray[700],
+              fontSize: theme.typography.fontSize.xs,
+              fontWeight: '600',
+            }}>
+            Dual
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.filterOption,
+            matchTypeFilter === 'non-dual' && styles.filterOptionActive,
+            {
+              backgroundColor:
+                matchTypeFilter === 'non-dual'
+                  ? theme.colors.primary[500]
+                  : isDark
+                  ? theme.colors.background.dark
+                  : theme.colors.gray[100],
+            },
+          ]}
+          onPress={() => setMatchTypeFilter('non-dual')}>
+          <Text
+            style={{
+              color:
+                matchTypeFilter === 'non-dual'
+                  ? theme.colors.white
+                  : isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.gray[700],
+              fontSize: theme.typography.fontSize.xs,
+              fontWeight: '600',
+            }}>
+            Non-Dual
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Player Stats Cards */}
-      {playerStats && (
+      {calculatedStats && (
         <View style={styles.statsContainer}>
           {/* Singles Stats Card */}
           <View
@@ -535,7 +650,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                         : theme.colors.text.light,
                     },
                   ]}>
-                  {playerStats.singles_wins}-{playerStats.singles_losses}
+                  {calculatedStats.singles_wins}-
+                  {calculatedStats.singles_losses}
                 </Text>
                 <Text
                   style={[
@@ -560,7 +676,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                         : theme.colors.text.light,
                     },
                   ]}>
-                  {playerStats.singles_win_pct.toFixed(1)}%
+                  {calculatedStats.singles_win_pct.toFixed(1)}%
                 </Text>
                 <Text
                   style={[
@@ -575,30 +691,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 </Text>
               </View>
               <View style={styles.statDivider} />
-              {/* <View style={styles.statItem}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {playerStats.wtn_singles?.toFixed(1) || '-'}
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  WTN
-                </Text>
-              </View> */}
             </View>
           </View>
 
@@ -637,7 +729,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                         : theme.colors.text.light,
                     },
                   ]}>
-                  {playerStats.doubles_wins}-{playerStats.doubles_losses}
+                  {calculatedStats.doubles_wins}-
+                  {calculatedStats.doubles_losses}
                 </Text>
                 <Text
                   style={[
@@ -662,7 +755,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                         : theme.colors.text.light,
                     },
                   ]}>
-                  {playerStats.doubles_win_pct.toFixed(1)}%
+                  {calculatedStats.doubles_win_pct.toFixed(1)}%
                 </Text>
                 <Text
                   style={[
@@ -677,30 +770,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 </Text>
               </View>
               <View style={styles.statDivider} />
-              {/* <View style={styles.statItem}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {playerStats.wtn_doubles?.toFixed(1) || '-'}
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  WTN
-                </Text>
-              </View> */}
             </View>
           </View>
         </View>
@@ -710,7 +779,14 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
   // Render positions played chart
   const renderPositionsChart = () => {
-    if (positionData.length === 0) return null;
+    // Check if we have any position data to display
+    if (
+      !positionsData ||
+      ((!positionsData.singles || positionsData.singles.length === 0) &&
+        (!positionsData.doubles || positionsData.doubles.length === 0))
+    ) {
+      return null;
+    }
 
     return (
       <View
@@ -737,12 +813,12 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                   : theme.colors.text.light,
               },
             ]}>
-            Position Performance
+            Position Stats
           </Text>
         </View>
 
         <PositionBarChart
-          positionData={positionData}
+          positionsData={positionsData}
           isDark={isDark}
           theme={theme}
         />
@@ -752,10 +828,11 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
   // Render match results
   const renderMatchResults = () => {
-    const singles = matchResults.filter(
+    // Change these lines in renderMatchResults
+    const singles = filteredMatches.filter(
       match => match.match_type === 'SINGLES',
     );
-    const doubles = matchResults.filter(
+    const doubles = filteredMatches.filter(
       match => match.match_type === 'DOUBLES',
     );
 
@@ -847,7 +924,9 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                                   : theme.colors.gray[600],
                               },
                             ]}>
-                            #{item.position}
+                            {isDualMatch(item)
+                              ? `#${item.position}`
+                              : 'Non-Dual'}
                           </Text>
                           <Text
                             style={[
@@ -958,7 +1037,9 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                                   : theme.colors.gray[600],
                               },
                             ]}>
-                            #{item.position}
+                            {isDualMatch(item)
+                              ? `#${item.position}`
+                              : 'Non-Dual'}
                           </Text>
                           <Text
                             style={[
@@ -1353,6 +1434,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 10,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: theme.spacing[4],
+    flexWrap: 'wrap',
+    rowGap: 10,
+  },
+  matchTypeFilter: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  filterOption: {
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2],
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 2,
+  },
+  filterOptionActive: {
+    backgroundColor: theme.colors.primary[500],
   },
 });
 
