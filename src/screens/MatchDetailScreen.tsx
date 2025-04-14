@@ -183,6 +183,71 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   const formatTeamName = (name?: string): string => {
     return name ? name.replace(/\s*\((M|W)\)$/, '') : 'Unknown Team';
   };
+  const parseScoreSets = (scoreStr: any) => {
+    console.log('Original score string:', scoreStr);
+    if (!scoreStr || typeof scoreStr !== 'string') return [];
+
+    // Clean and split the score string
+    const cleanedScore = scoreStr.replace(/,\s*/g, ' ');
+    const sets = cleanedScore.split(' ').filter(set => set.includes('-'));
+
+    return sets.map(set => {
+      console.log('Processing set:', set);
+
+      // Check if this set has a tiebreak
+      const hasTiebreak = set.includes('(');
+
+      // Extract the main scores and potential tiebreak
+      let score1,
+        score2,
+        tiebreak = null;
+
+      if (hasTiebreak) {
+        // Extract tiebreak value
+        const tiebreakMatch = set.match(/\(([^)]+)\)/);
+        if (tiebreakMatch && tiebreakMatch[1]) {
+          tiebreak = tiebreakMatch[1];
+        }
+
+        // Remove tiebreak part for score extraction
+        const mainScore = set.split('(')[0];
+        [score1, score2] = mainScore.split('-');
+      } else {
+        // Simple split for non-tiebreak scores
+        [score1, score2] = set.split('-');
+      }
+
+      // Determine which score the tiebreak belongs to (typically the '6' in 7-6)
+      let tiebreakBelongsToScore1 = false;
+      let tiebreakBelongsToScore2 = false;
+
+      if (hasTiebreak) {
+        // In tennis, tiebreaks happen when scores are 6-6
+        // For a 7-6 score, the tiebreak belongs to the '6'
+        if (score1 === '7' && score2 === '6') {
+          tiebreakBelongsToScore2 = true;
+        } else if (score1 === '6' && score2 === '7') {
+          tiebreakBelongsToScore1 = true;
+        }
+      }
+
+      console.log('Parsed set:', {
+        score1,
+        score2,
+        tiebreak,
+        tiebreakBelongsToScore1,
+        tiebreakBelongsToScore2,
+      });
+
+      return {
+        score1: score1 || '0',
+        score2: score2 || '0',
+        tiebreak,
+        tiebreakBelongsToScore1,
+        tiebreakBelongsToScore2,
+      };
+    });
+  };
 
   // Render loading state
   if (loading && !refreshing) {
@@ -503,7 +568,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       {/* UF Tag - if match is unfinished */}
                       {!match.side1_won && !match.side2_won && (
                         <View style={styles.unfinishedTag}>
-                          <Text style={styles.unfinishedText}>UF</Text>
+                          <Text style={styles.unfinishedText}>DNF</Text>
                         </View>
                       )}
                     </View>
@@ -521,9 +586,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           color={
                             match.side1_won
                               ? theme.colors.success
-                              : isDark
-                              ? theme.colors.text.dimDark
-                              : theme.colors.gray[600]
+                              : theme.colors.white
                           }
                         />
                         <Text
@@ -532,14 +595,11 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                             {
                               color: match.side1_won
                                 ? theme.colors.success
-                                : isDark
-                                ? theme.colors.text.dimDark
-                                : theme.colors.gray[600],
+                                : theme.colors.white,
                             },
                           ]}>
-                          {formatPlayerName(players[match.side1_player1_id])} /{' '}
-                          {formatPlayerName(players[match.side1_player2_id])} [
-                          {teams.home?.abbreviation || 'HOME'}]
+                          {formatPlayerName(players[match.side1_player1_id])} [
+                          {match.side1_name}]
                         </Text>
                         {match.side1_won && (
                           <Icon
@@ -550,22 +610,57 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           />
                         )}
                       </View>
-                      <Text
-                        style={[
-                          styles.scoreDigit,
-                          {
-                            color: match.side1_won
-                              ? theme.colors.success
-                              : isDark
-                              ? theme.colors.text.dimDark
-                              : theme.colors.gray[600],
-                          },
-                        ]}>
-                        {match.side1_score
-                          .split(' ')[0]
-                          .split('-')[0]
-                          .replace(/[\[\]]/g, '')}
-                      </Text>
+
+                      {/* Enhanced score display */}
+                      <View style={styles.setScores}>
+                        {match.side1_score &&
+                        typeof match.side1_score === 'string' ? (
+                          parseScoreSets(match.side1_score).map(
+                            (set, index) => (
+                              <View
+                                key={index}
+                                style={styles.setScoreContainer}>
+                                <View
+                                  style={{
+                                    height: 24, // Fixed height for consistency
+                                    justifyContent: 'center', // Center the text vertically
+                                  }}>
+                                  <Text
+                                    style={[
+                                      styles.scoreValue,
+                                      {
+                                        color: match.side1_won
+                                          ? theme.colors.success
+                                          : theme.colors.white,
+                                      },
+                                    ]}>
+                                    {set.score1}
+                                  </Text>
+                                  {set.tiebreak &&
+                                    set.tiebreakBelongsToScore1 && (
+                                      <Text
+                                        style={[
+                                          styles.tiebreakValue,
+                                          {
+                                            position: 'absolute', // Position absolutely
+                                            top: 0, // Align to top
+                                            right: -8, // Offset to the right
+                                            color: match.side1_won
+                                              ? theme.colors.success
+                                              : theme.colors.white,
+                                          },
+                                        ]}>
+                                        {set.tiebreak}
+                                      </Text>
+                                    )}
+                                </View>
+                              </View>
+                            ),
+                          )
+                        ) : (
+                          <Text style={styles.setScore}>N/A</Text>
+                        )}
+                      </View>
                     </View>
 
                     {/* Away Team Players */}
@@ -581,9 +676,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           color={
                             match.side2_won
                               ? theme.colors.success
-                              : isDark
-                              ? theme.colors.text.dimDark
-                              : theme.colors.gray[600]
+                              : theme.colors.white
                           }
                         />
                         <Text
@@ -592,14 +685,11 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                             {
                               color: match.side2_won
                                 ? theme.colors.success
-                                : isDark
-                                ? theme.colors.text.dimDark
-                                : theme.colors.gray[600],
+                                : theme.colors.white,
                             },
                           ]}>
-                          {formatPlayerName(players[match.side2_player1_id])} /{' '}
-                          {formatPlayerName(players[match.side2_player2_id])} [
-                          {teams.away?.abbreviation || 'AWAY'}]
+                          {formatPlayerName(players[match.side2_player1_id])} [
+                          {match.side2_name}]
                         </Text>
                         {match.side2_won && (
                           <Icon
@@ -610,22 +700,48 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           />
                         )}
                       </View>
-                      <Text
-                        style={[
-                          styles.scoreDigit,
-                          {
-                            color: match.side2_won
-                              ? theme.colors.success
-                              : isDark
-                              ? theme.colors.text.dimDark
-                              : theme.colors.gray[600],
-                          },
-                        ]}>
-                        {match.side1_score
-                          .split(' ')[0]
-                          .split('-')[1]
-                          .replace(/[\[\]]/g, '')}
-                      </Text>
+
+                      {/* Enhanced score display */}
+                      <View style={styles.setScores}>
+                        {match.side1_score &&
+                        typeof match.side1_score === 'string' ? (
+                          parseScoreSets(match.side1_score).map(
+                            (set, index) => (
+                              <View
+                                key={index}
+                                style={styles.setScoreContainer}>
+                                <Text
+                                  style={[
+                                    styles.scoreValue,
+                                    {
+                                      color: match.side2_won
+                                        ? theme.colors.success
+                                        : theme.colors.white,
+                                    },
+                                  ]}>
+                                  {set.score2}
+                                </Text>
+                                {set.tiebreak &&
+                                  set.tiebreakBelongsToScore2 && (
+                                    <Text
+                                      style={[
+                                        styles.tiebreakValue,
+                                        {
+                                          color: match.side2_won
+                                            ? theme.colors.success
+                                            : theme.colors.white,
+                                        },
+                                      ]}>
+                                      {set.tiebreak}
+                                    </Text>
+                                  )}
+                              </View>
+                            ),
+                          )
+                        ) : (
+                          <Text style={styles.setScore}>N/A</Text>
+                        )}
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -694,174 +810,175 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       {/* UF Tag - if match is unfinished */}
                       {!match.side1_won && !match.side2_won && (
                         <View style={styles.unfinishedTag}>
-                          <Text style={styles.unfinishedText}>UF</Text>
+                          <Text style={styles.unfinishedText}>DNF</Text>
                         </View>
                       )}
                     </View>
 
-                    {/* Parse actual winners based on set scores */}
-                    {(() => {
-                      const {side1Sets, side2Sets} = parseMatchScore(
-                        match.side1_score,
-                      );
-
-                      // Add debug logs
-                      console.log(
-                        `Singles Match ${match.position} - API says: side1_won=${match.side1_won}, side2_won=${match.side2_won}`,
-                        `Score calculation: side1Sets=${side1Sets}, side2Sets=${side2Sets}`,
-                        `Score string: "${match.side1_score}"`,
-                      );
-
-                      return (
-                        <>
-                          {/* Home Player */}
-                          <View
+                    {/* Parse and display the scores with tiebreaks */}
+                    <>
+                      {/* Home Player */}
+                      <View
+                        style={[
+                          styles.playerRow,
+                          match.side1_won && styles.winnerRow,
+                        ]}>
+                        <View style={styles.playerInfo}>
+                          <Icon
+                            name="user"
+                            size={14}
+                            color={
+                              match.side1_won
+                                ? theme.colors.success
+                                : theme.colors.white
+                            }
+                          />
+                          <Text
                             style={[
-                              styles.playerRow,
-                              match.side1_won && styles.winnerRow,
+                              styles.playerText,
+                              {
+                                color: match.side1_won
+                                  ? theme.colors.success
+                                  : theme.colors.white,
+                              },
                             ]}>
-                            <View style={styles.playerInfo}>
-                              <Icon
-                                name="user"
-                                size={14}
-                                color={
-                                  match.side1_won
-                                    ? theme.colors.success
-                                    : isDark
-                                    ? theme.colors.text.dimDark
-                                    : theme.colors.gray[600]
-                                }
-                              />
-                              <Text
-                                style={[
-                                  styles.playerText,
-                                  {
-                                    color: match.side1_won
-                                      ? theme.colors.success
-                                      : isDark
-                                      ? theme.colors.text.dimDark
-                                      : theme.colors.gray[600],
-                                  },
-                                ]}>
-                                {formatPlayerName(
-                                  players[match.side1_player1_id],
-                                )}{' '}
-                                [{teams.home?.abbreviation || 'HOME'}]
-                              </Text>
-                              {match.side1_won && (
-                                <Icon
-                                  name="check"
-                                  size={14}
-                                  color={theme.colors.success}
-                                  style={styles.checkIcon}
-                                />
-                              )}
-                            </View>
-                            <View style={styles.setScores}>
-                              {match.side1_score &&
-                              typeof match.side1_score === 'string' ? (
-                                match.side1_score
-                                  .split(' ')
-                                  .map((set: any, index: any) => (
-                                    <Text
-                                      key={index}
-                                      style={[
-                                        styles.setScore,
-                                        {
-                                          color: match.side1_won
-                                            ? theme.colors.success
-                                            : isDark
-                                            ? theme.colors.text.dimDark
-                                            : theme.colors.gray[600],
-                                        },
-                                      ]}>
-                                      {set && set.includes('-')
-                                        ? set.split('-')[0] || '0'
-                                        : '0'}
-                                    </Text>
-                                  ))
-                              ) : (
-                                <Text style={styles.setScore}>N/A</Text>
-                              )}
-                            </View>
-                          </View>
+                            {formatPlayerName(players[match.side1_player1_id])}{' '}
+                            [{match.side1_name}]
+                          </Text>
+                          {match.side1_won && (
+                            <Icon
+                              name="check"
+                              size={14}
+                              color={theme.colors.success}
+                              style={styles.checkIcon}
+                            />
+                          )}
+                        </View>
 
-                          {/* Away Player */}
-                          <View
+                        {/* Enhanced score display with tiebreak support */}
+                        <View style={styles.setScores}>
+                          {match.side1_score &&
+                          typeof match.side1_score === 'string' ? (
+                            parseScoreSets(match.side1_score).map(
+                              (set, index) => (
+                                <View
+                                  key={index}
+                                  style={styles.setScoreContainer}>
+                                  <Text
+                                    style={[
+                                      styles.scoreValue,
+                                      {
+                                        color: match.side1_won
+                                          ? theme.colors.success
+                                          : theme.colors.white,
+                                      },
+                                    ]}>
+                                    {set.score1}
+                                  </Text>
+                                  {set.tiebreak &&
+                                    set.tiebreakBelongsToScore1 && (
+                                      <Text
+                                        style={[
+                                          styles.tiebreakValue,
+                                          {
+                                            color: match.side1_won
+                                              ? theme.colors.success
+                                              : theme.colors.white,
+                                          },
+                                        ]}>
+                                        {set.tiebreak}
+                                      </Text>
+                                    )}
+                                </View>
+                              ),
+                            )
+                          ) : (
+                            <Text style={styles.setScore}>N/A</Text>
+                          )}
+                        </View>
+                      </View>
+
+                      {/* Away Player */}
+                      <View
+                        style={[
+                          styles.playerRow,
+                          match.side2_won && styles.winnerRow,
+                        ]}>
+                        <View style={styles.playerInfo}>
+                          <Icon
+                            name="user"
+                            size={14}
+                            color={
+                              match.side2_won
+                                ? theme.colors.success
+                                : theme.colors.white
+                            }
+                          />
+                          <Text
                             style={[
-                              styles.playerRow,
-                              match.side2_won && styles.winnerRow,
+                              styles.playerText,
+                              {
+                                color: match.side2_won
+                                  ? theme.colors.success
+                                  : theme.colors.white,
+                              },
                             ]}>
-                            <View style={styles.playerInfo}>
-                              <Icon
-                                name="user"
-                                size={14}
-                                color={
-                                  match.side2_won
-                                    ? theme.colors.success
-                                    : isDark
-                                    ? theme.colors.text.dimDark
-                                    : theme.colors.gray[600]
-                                }
-                              />
-                              <Text
-                                style={[
-                                  styles.playerText,
-                                  {
-                                    color: match.side2_won
-                                      ? theme.colors.success
-                                      : isDark
-                                      ? theme.colors.text.dimDark
-                                      : theme.colors.gray[600],
-                                  },
-                                ]}>
-                                {formatPlayerName(
-                                  players[match.side2_player1_id],
-                                )}{' '}
-                                [{teams.away?.abbreviation || 'AWAY'}]
-                              </Text>
-                              {match.side2_won && (
-                                <Icon
-                                  name="check"
-                                  size={14}
-                                  color={theme.colors.success}
-                                  style={styles.checkIcon}
-                                />
-                              )}
-                            </View>
-                            <View style={styles.setScores}>
-                              {match.side1_score &&
-                              typeof match.side1_score === 'string' ? (
-                                match.side1_score
-                                  .split(' ')
-                                  .map((set: any, index: any) => (
-                                    <Text
-                                      key={index}
-                                      style={[
-                                        styles.setScore,
-                                        {
-                                          color: match.side2_won
-                                            ? theme.colors.success
-                                            : isDark
-                                            ? theme.colors.text.dimDark
-                                            : theme.colors.gray[600],
-                                        },
-                                      ]}>
-                                      {set && set.includes('-')
-                                        ? (set.split('-')[1] || '').split(
-                                            '(',
-                                          )[0]
-                                        : '0'}
-                                    </Text>
-                                  ))
-                              ) : (
-                                <Text style={styles.setScore}>N/A</Text>
-                              )}
-                            </View>
-                          </View>
-                        </>
-                      );
-                    })()}
+                            {formatPlayerName(players[match.side2_player1_id])}{' '}
+                            [{match.side2_name}]
+                          </Text>
+                          {match.side2_won && (
+                            <Icon
+                              name="check"
+                              size={14}
+                              color={theme.colors.success}
+                              style={styles.checkIcon}
+                            />
+                          )}
+                        </View>
+
+                        {/* Enhanced score display with tiebreak support */}
+                        <View style={styles.setScores}>
+                          {match.side1_score &&
+                          typeof match.side1_score === 'string' ? (
+                            parseScoreSets(match.side1_score).map(
+                              (set, index) => (
+                                <View
+                                  key={index}
+                                  style={styles.setScoreContainer}>
+                                  <Text
+                                    style={[
+                                      styles.scoreValue,
+                                      {
+                                        color: match.side2_won
+                                          ? theme.colors.success
+                                          : theme.colors.white,
+                                      },
+                                    ]}>
+                                    {set.score2}
+                                  </Text>
+                                  {set.tiebreak &&
+                                    set.tiebreakBelongsToScore2 && (
+                                      <Text
+                                        style={[
+                                          styles.tiebreakValue,
+                                          {
+                                            color: match.side2_won
+                                              ? theme.colors.success
+                                              : theme.colors.white,
+                                          },
+                                        ]}>
+                                        {set.tiebreak}
+                                      </Text>
+                                    )}
+                                </View>
+                              ),
+                            )
+                          ) : (
+                            <Text style={styles.setScore}>N/A</Text>
+                          )}
+                        </View>
+                      </View>
+                    </>
                   </View>
                 ))}
               </View>
@@ -941,6 +1058,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: theme.spacing[4],
     fontSize: theme.typography.fontSize.base,
+    textAlign: 'center',
   },
   centerContainer: {
     flex: 1,
@@ -1118,6 +1236,7 @@ const styles = StyleSheet.create({
   setScores: {
     flexDirection: 'row',
     gap: theme.spacing[2],
+    alignItems: 'center',
   },
   setScore: {
     fontSize: theme.typography.fontSize.base,
@@ -1145,6 +1264,24 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     overflow: 'hidden',
     fontWeight: '600',
+  },
+  setScoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 5,
+    minHeight: 24, // Add a fixed minimum height to maintain alignment
+    justifyContent: 'center', // Center content vertically
+  },
+  scoreValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlignVertical: 'center',
+  },
+  tiebreakValue: {
+    fontSize: 10,
+    lineHeight: 10,
+    marginTop: 2,
+    marginLeft: 1,
   },
 });
 export default MatchDetailScreen;

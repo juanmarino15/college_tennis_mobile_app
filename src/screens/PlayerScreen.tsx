@@ -20,7 +20,6 @@ import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
 import PositionBarChart from '../components/PositionBarChart';
-import {Alert} from 'react-native';
 
 // Define navigation props
 type RootStackParamList = {
@@ -129,6 +128,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [calculatedStats, setCalculatedStats] = useState<PlayerStats | null>(
     null,
   );
+  // Add new state for match sorting
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   // Toggle dropdown for season selection
   const toggleDropdown = () => {
@@ -139,6 +140,11 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const selectSeason = (season: string) => {
     setSelectedSeason(season);
     setDropdownVisible(false);
+  };
+
+  // Set sort order
+  const setMatchSortOrder = (order: 'newest' | 'oldest') => {
+    setSortOrder(order);
   };
 
   // Fetch player data
@@ -158,6 +164,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       const results: any = await fetchPlayerMatches(playerId, selectedSeason);
       setMatchResults(results);
       setFilteredMatches(results);
+
+      console.log(results);
 
       // Initially calculate stats based on all matches
       setCalculatedStats(calculateStatsFromFilteredMatches(results));
@@ -251,24 +259,32 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     return isDualMatch(match) ? 'dual' : 'non-dual';
   };
 
-  // Filter matches based on match type
+  // Filter and sort matches based on filters and sort order
   useEffect(() => {
     if (matchResults.length > 0) {
+      // First apply match type filter
       let filtered = [...matchResults];
 
-      // Apply match type filter
       if (matchTypeFilter === 'dual') {
         filtered = filtered.filter(match => isDualMatch(match));
       } else if (matchTypeFilter === 'non-dual') {
         filtered = filtered.filter(match => !isDualMatch(match));
       }
 
+      // Then sort matches by date according to sort order
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+
+        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+      });
+
       setFilteredMatches(filtered);
 
       // Calculate stats based on filtered matches
       setCalculatedStats(calculateStatsFromFilteredMatches(filtered));
     }
-  }, [matchResults, matchTypeFilter]);
+  }, [matchResults, matchTypeFilter, sortOrder]);
 
   // Handle pull-to-refresh
   const handleRefresh = () => {
@@ -290,7 +306,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     return (
       <View
         style={[
-          styles.container,
+          styles.loadingContainer,
           {
             backgroundColor: isDark
               ? theme.colors.background.dark
@@ -307,7 +323,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 : theme.colors.gray[600],
             },
           ]}>
-          Loading player info...
+          Loading match details...
         </Text>
       </View>
     );
@@ -523,92 +539,95 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
         </Modal>
       </View>
 
-      {/* Match Type Filter */}
-      <View style={styles.matchTypeFilter}>
-        <TouchableOpacity
-          style={[
-            styles.filterOption,
-            matchTypeFilter === 'all' && styles.filterOptionActive,
-            {
-              backgroundColor:
-                matchTypeFilter === 'all'
-                  ? theme.colors.primary[500]
-                  : isDark
-                  ? theme.colors.background.dark
-                  : theme.colors.gray[100],
-            },
-          ]}
-          onPress={() => setMatchTypeFilter('all')}>
-          <Text
-            style={{
-              color:
-                matchTypeFilter === 'all'
-                  ? theme.colors.white
-                  : isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.gray[700],
-              fontSize: theme.typography.fontSize.xs,
-              fontWeight: '600',
-            }}>
-            All
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterOption,
-            matchTypeFilter === 'dual' && styles.filterOptionActive,
-            {
-              backgroundColor:
-                matchTypeFilter === 'dual'
-                  ? theme.colors.primary[500]
-                  : isDark
-                  ? theme.colors.background.dark
-                  : theme.colors.gray[100],
-            },
-          ]}
-          onPress={() => setMatchTypeFilter('dual')}>
-          <Text
-            style={{
-              color:
-                matchTypeFilter === 'dual'
-                  ? theme.colors.white
-                  : isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.gray[700],
-              fontSize: theme.typography.fontSize.xs,
-              fontWeight: '600',
-            }}>
-            Dual
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterOption,
-            matchTypeFilter === 'non-dual' && styles.filterOptionActive,
-            {
-              backgroundColor:
-                matchTypeFilter === 'non-dual'
-                  ? theme.colors.primary[500]
-                  : isDark
-                  ? theme.colors.background.dark
-                  : theme.colors.gray[100],
-            },
-          ]}
-          onPress={() => setMatchTypeFilter('non-dual')}>
-          <Text
-            style={{
-              color:
-                matchTypeFilter === 'non-dual'
-                  ? theme.colors.white
-                  : isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.gray[700],
-              fontSize: theme.typography.fontSize.xs,
-              fontWeight: '600',
-            }}>
-            Non-Dual
-          </Text>
-        </TouchableOpacity>
+      {/* Match Type Filters Row */}
+      <View style={styles.filtersRow}>
+        {/* Match Type Filter */}
+        <View style={styles.matchTypeFilter}>
+          <TouchableOpacity
+            style={[
+              styles.filterOption,
+              matchTypeFilter === 'all' && styles.filterOptionActive,
+              {
+                backgroundColor:
+                  matchTypeFilter === 'all'
+                    ? theme.colors.primary[500]
+                    : isDark
+                    ? theme.colors.background.dark
+                    : theme.colors.gray[100],
+              },
+            ]}
+            onPress={() => setMatchTypeFilter('all')}>
+            <Text
+              style={{
+                color:
+                  matchTypeFilter === 'all'
+                    ? theme.colors.white
+                    : isDark
+                    ? theme.colors.text.dark
+                    : theme.colors.gray[700],
+                fontSize: theme.typography.fontSize.xs,
+                fontWeight: '600',
+              }}>
+              All
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterOption,
+              matchTypeFilter === 'dual' && styles.filterOptionActive,
+              {
+                backgroundColor:
+                  matchTypeFilter === 'dual'
+                    ? theme.colors.primary[500]
+                    : isDark
+                    ? theme.colors.background.dark
+                    : theme.colors.gray[100],
+              },
+            ]}
+            onPress={() => setMatchTypeFilter('dual')}>
+            <Text
+              style={{
+                color:
+                  matchTypeFilter === 'dual'
+                    ? theme.colors.white
+                    : isDark
+                    ? theme.colors.text.dark
+                    : theme.colors.gray[700],
+                fontSize: theme.typography.fontSize.xs,
+                fontWeight: '600',
+              }}>
+              Dual
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterOption,
+              matchTypeFilter === 'non-dual' && styles.filterOptionActive,
+              {
+                backgroundColor:
+                  matchTypeFilter === 'non-dual'
+                    ? theme.colors.primary[500]
+                    : isDark
+                    ? theme.colors.background.dark
+                    : theme.colors.gray[100],
+              },
+            ]}
+            onPress={() => setMatchTypeFilter('non-dual')}>
+            <Text
+              style={{
+                color:
+                  matchTypeFilter === 'non-dual'
+                    ? theme.colors.white
+                    : isDark
+                    ? theme.colors.text.dark
+                    : theme.colors.gray[700],
+                fontSize: theme.typography.fontSize.xs,
+                fontWeight: '600',
+              }}>
+              Non-Dual
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Player Stats Cards */}
@@ -826,14 +845,278 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   };
 
   // Render match results
+
   const renderMatchResults = () => {
-    // Change these lines in renderMatchResults
+    // Filter matches by type
     const singles = filteredMatches.filter(
       match => match.match_type === 'SINGLES',
     );
     const doubles = filteredMatches.filter(
       match => match.match_type === 'DOUBLES',
     );
+
+    // Helper function to check if score indicates DNF
+    const isDnfScore = (scoreStr: string): boolean => {
+      // Common DNF indicators in tennis scores
+      return (
+        !scoreStr ||
+        scoreStr.toLowerCase().includes('dnf') ||
+        scoreStr.toLowerCase().includes('ret') ||
+        scoreStr.toLowerCase().includes('def') ||
+        scoreStr.toLowerCase().includes('w/o') ||
+        scoreStr.toLowerCase().includes('walkover')
+      );
+    };
+
+    // Helper function to parse score string into sets
+    const parseScoreSets = (scoreStr: string) => {
+      if (!scoreStr || isDnfScore(scoreStr)) return [];
+
+      // Common formats: "6-4 7-5" or "6-4, 7-5" or "6-4,7-5"
+      const cleanedScore = scoreStr.replace(/,\s*/g, ' ');
+      const sets = cleanedScore.split(' ').filter(set => set.includes('-'));
+
+      return sets.map(set => {
+        // Handle tiebreak scores like "7-6(7-2)" or "7-6(10-8)"
+        const tiebreakMatch = set.match(/(\d+)-(\d+)(?:\((\d+)(?:-(\d+))?\))?/);
+
+        if (!tiebreakMatch) return {winnerScore: '0', loserScore: '0'};
+
+        const winnerScore = tiebreakMatch[1];
+        const loserScore = tiebreakMatch[2];
+
+        // Extract tiebreak value if present
+        let tiebreakWinner = null;
+        let tiebreakLoser = null;
+
+        if (tiebreakMatch[3]) {
+          tiebreakWinner = tiebreakMatch[3];
+          tiebreakLoser = tiebreakMatch[4] || null;
+        }
+
+        return {
+          winnerScore,
+          loserScore,
+          tiebreakWinner,
+          tiebreakLoser,
+        };
+      });
+    };
+
+    // Render a match card with consistent layout
+    const renderMatchCard = (
+      item: MatchResult,
+      matchType: 'singles' | 'doubles',
+    ) => {
+      // Check if the match was completed or DNF
+      const isDnf = isDnfScore(item.score);
+      // Parse score sets
+      const sets = parseScoreSets(item.score);
+
+      // Log parsed score data for debugging
+      console.log(`Match ID: ${item.id}, Score: ${item.score}`);
+      console.log('Parsed sets:', sets);
+
+      return (
+        <TouchableOpacity
+          style={[
+            styles.matchCard,
+            {
+              backgroundColor: isDark
+                ? theme.colors.background.dark
+                : theme.colors.white,
+              borderColor: isDark
+                ? theme.colors.border.dark
+                : theme.colors.border.light,
+            },
+          ]}
+          onPress={() => navigateToMatch(item.match_id)}
+          activeOpacity={0.7}>
+          <View style={styles.matchCardContent}>
+            {/* Left Section: Match Info */}
+            <View style={styles.matchLeftSection}>
+              {/* Position & Date */}
+              <View style={styles.matchInfoRow}>
+                <Text
+                  style={[
+                    styles.matchPosition,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[600],
+                    },
+                  ]}>
+                  {isDualMatch(item) ? `#${item.position}` : 'Non-Dual'}
+                </Text>
+                <Text
+                  style={[
+                    styles.matchDate,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[600],
+                    },
+                  ]}>
+                  {formatMatchDate(item.date)}
+                </Text>
+              </View>
+
+              {/* Opponent Info */}
+              <View style={styles.opponentContainer}>
+                {/* First row: Logo + Opponent for both singles and doubles */}
+                <View style={styles.opponentRowSingles}>
+                  <TeamLogo
+                    teamId={item.opponent_team_id}
+                    size="small"
+                    containerStyle={styles.teamLogoContainer}
+                  />
+                  <Text
+                    style={[
+                      styles.opponentName,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dark
+                          : theme.colors.text.light,
+                      },
+                    ]}
+                    numberOfLines={1}>
+                    vs. {item.opponent_name1}
+                    {matchType === 'doubles' && item.opponent_name2
+                      ? `/${item.opponent_name2.split(' ')[1] || ''}`
+                      : ''}
+                  </Text>
+                </View>
+
+                {/* Second row: Partner name for doubles only */}
+                {matchType === 'doubles' && item.partner_name && (
+                  <Text
+                    style={[
+                      styles.partnerName,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[600],
+                        marginLeft: 32, // Align with text above (after logo)
+                      },
+                    ]}
+                    numberOfLines={1}>
+                    w/ {item.partner_name}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            {/* Right Section: Result & Score */}
+            <View style={styles.matchRightSection}>
+              {/* Result Chip - Show 'DNF' or 'W'/'L' */}
+              {isDnf ? (
+                <View
+                  style={[
+                    styles.resultChip,
+                    {
+                      backgroundColor: isDark
+                        ? theme.colors.gray[700]
+                        : theme.colors.gray[500],
+                    },
+                  ]}>
+                  <Text style={styles.resultChipText}>DNF</Text>
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.resultChip,
+                    {
+                      backgroundColor: item.won
+                        ? theme.colors.success
+                        : theme.colors.error,
+                    },
+                  ]}>
+                  <Text style={styles.resultChipText}>
+                    {item.won ? 'W' : 'L'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Score Sets in grid */}
+              {isDnf ? (
+                // Show score string for DNF matches
+                <Text
+                  style={[
+                    styles.dnfScoreText,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[500],
+                    },
+                  ]}>
+                  {item.score || 'DNF'}
+                </Text>
+              ) : (
+                <View style={styles.scoresGrid}>
+                  {sets.map((set, index) => (
+                    <View key={index} style={styles.scoreSetColumn}>
+                      {/* Player's score */}
+                      <View style={styles.scoreWithSuperscript}>
+                        <Text
+                          style={[
+                            styles.scoreValue,
+                            item.won ? styles.winnerScore : styles.loserScore,
+                            {
+                              color: isDark
+                                ? theme.colors.text.dark
+                                : theme.colors.text.light,
+                            },
+                          ]}>
+                          {item.won ? set.winnerScore : set.loserScore}
+                        </Text>
+                        {/* Show tiebreak value as superscript if present and this player won the tiebreak */}
+                        {item.won && set.tiebreakWinner && (
+                          <Text style={styles.tiebreakSuper}>
+                            {set.tiebreakWinner}
+                          </Text>
+                        )}
+                        {!item.won && set.tiebreakLoser && (
+                          <Text style={styles.tiebreakSuper}>
+                            {set.tiebreakLoser}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Opponent's score */}
+                      <View style={styles.scoreWithSuperscript}>
+                        <Text
+                          style={[
+                            styles.scoreValue,
+                            item.won ? styles.loserScore : styles.winnerScore,
+                            {
+                              color: isDark
+                                ? theme.colors.text.dimDark
+                                : theme.colors.gray[500],
+                            },
+                          ]}>
+                          {item.won ? set.loserScore : set.winnerScore}
+                        </Text>
+                        {/* Show tiebreak value as superscript if present and opponent won the tiebreak */}
+                        {!item.won && set.tiebreakWinner && (
+                          <Text style={styles.tiebreakSuper}>
+                            {set.tiebreakWinner}
+                          </Text>
+                        )}
+                        {item.won && set.tiebreakLoser && (
+                          <Text style={styles.tiebreakSuper}>
+                            {set.tiebreakLoser}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    };
 
     return (
       <View
@@ -845,26 +1128,10 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
               : theme.colors.card.light,
           },
         ]}>
-        <View style={styles.sectionHeader}>
-          <Icon
-            name="list"
-            size={18}
-            color={isDark ? theme.colors.text.dark : theme.colors.gray[700]}
-          />
-          <Text
-            style={[
-              styles.sectionTitle,
-              {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            Match Results
-          </Text>
-        </View>
+        {/* Rest of the code remains the same */}
+        <View style={styles.sectionHeaderWithSort}>{/* ... */}</View>
 
-        {matchResults.length === 0 ? (
+        {filteredMatches.length === 0 ? (
           <Text
             style={[
               styles.emptyStateText,
@@ -896,97 +1163,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                   data={singles}
                   keyExtractor={item => item.id}
                   scrollEnabled={false}
-                  renderItem={({item}) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.matchCard,
-                        {
-                          backgroundColor: isDark
-                            ? theme.colors.background.dark
-                            : theme.colors.white,
-                          borderColor: isDark
-                            ? theme.colors.border.dark
-                            : theme.colors.border.light,
-                        },
-                      ]}
-                      onPress={() => navigateToMatch(item.match_id)}
-                      activeOpacity={0.7}>
-                      <View style={styles.matchCardContent}>
-                        {/* Match Meta Info */}
-                        <View style={styles.matchMeta}>
-                          <Text
-                            style={[
-                              styles.matchPosition,
-                              {
-                                color: isDark
-                                  ? theme.colors.text.dimDark
-                                  : theme.colors.gray[600],
-                              },
-                            ]}>
-                            {isDualMatch(item)
-                              ? `#${item.position}`
-                              : 'Non-Dual'}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.matchDate,
-                              {
-                                color: isDark
-                                  ? theme.colors.text.dimDark
-                                  : theme.colors.gray[600],
-                              },
-                            ]}>
-                            {formatMatchDate(item.date)}
-                          </Text>
-                        </View>
-
-                        {/* Opponent Info */}
-                        <View style={styles.matchOpponent}>
-                          <TeamLogo
-                            teamId={item.opponent_team_id}
-                            size="small"
-                          />
-                          <Text
-                            style={[
-                              styles.opponentName,
-                              {
-                                color: isDark
-                                  ? theme.colors.text.dark
-                                  : theme.colors.text.light,
-                              },
-                            ]}>
-                            vs. {item.opponent_name1}
-                          </Text>
-                        </View>
-
-                        {/* Result */}
-                        <View
-                          style={[
-                            styles.resultContainer,
-                            {
-                              backgroundColor: item.won
-                                ? theme.colors.success + '20'
-                                : theme.colors.error + '20',
-                              borderColor: item.won
-                                ? theme.colors.success
-                                : theme.colors.error,
-                            },
-                          ]}>
-                          <Text
-                            style={[
-                              styles.resultText,
-                              {
-                                color: item.won
-                                  ? theme.colors.success
-                                  : theme.colors.error,
-                              },
-                            ]}>
-                            {item.won ? 'W' : 'L'} {item.score}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                  renderItem={({item}) => renderMatchCard(item, 'singles')}
                 />
               </View>
             )}
@@ -1009,113 +1186,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                   data={doubles}
                   keyExtractor={item => item.id}
                   scrollEnabled={false}
-                  renderItem={({item}) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.matchCard,
-                        {
-                          backgroundColor: isDark
-                            ? theme.colors.background.dark
-                            : theme.colors.white,
-                          borderColor: isDark
-                            ? theme.colors.border.dark
-                            : theme.colors.border.light,
-                        },
-                      ]}
-                      onPress={() => navigateToMatch(item.match_id)}
-                      activeOpacity={0.7}>
-                      <View style={styles.matchCardContent}>
-                        {/* Match Meta Info */}
-                        <View style={styles.matchMeta}>
-                          <Text
-                            style={[
-                              styles.matchPosition,
-                              {
-                                color: isDark
-                                  ? theme.colors.text.dimDark
-                                  : theme.colors.gray[600],
-                              },
-                            ]}>
-                            {isDualMatch(item)
-                              ? `#${item.position}`
-                              : 'Non-Dual'}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.matchDate,
-                              {
-                                color: isDark
-                                  ? theme.colors.text.dimDark
-                                  : theme.colors.gray[600],
-                              },
-                            ]}>
-                            {formatMatchDate(item.date)}
-                          </Text>
-                        </View>
-
-                        {/* Doubles Info */}
-                        <View style={styles.matchOpponent}>
-                          <TeamLogo
-                            teamId={item.opponent_team_id}
-                            size="small"
-                          />
-                          <View>
-                            <Text
-                              style={[
-                                styles.partnerName,
-                                {
-                                  color: isDark
-                                    ? theme.colors.text.dimDark
-                                    : theme.colors.gray[600],
-                                },
-                              ]}>
-                              w/ {item.partner_name || 'Partner'}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.opponentName,
-                                {
-                                  color: isDark
-                                    ? theme.colors.text.dark
-                                    : theme.colors.text.light,
-                                },
-                              ]}>
-                              vs. {item.opponent_name1}
-                              {item.opponent_name2
-                                ? `/${item.opponent_name2}`
-                                : ''}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Result */}
-                        <View
-                          style={[
-                            styles.resultContainer,
-                            {
-                              backgroundColor: item.won
-                                ? theme.colors.success + '20'
-                                : theme.colors.error + '20',
-                              borderColor: item.won
-                                ? theme.colors.success
-                                : theme.colors.error,
-                            },
-                          ]}>
-                          <Text
-                            style={[
-                              styles.resultText,
-                              {
-                                color: item.won
-                                  ? theme.colors.success
-                                  : theme.colors.error,
-                              },
-                            ]}>
-                            {item.won ? 'W' : 'L'} {item.score}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                  renderItem={({item}) => renderMatchCard(item, 'doubles')}
                 />
               </View>
             )}
@@ -1135,23 +1206,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
             : theme.colors.background.light,
         },
       ]}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}>
-        <Icon
-          name="chevron-left"
-          size={24}
-          color={isDark ? theme.colors.text.dark : theme.colors.gray[700]}
-        />
-        <Text
-          style={[
-            styles.backButtonText,
-            {color: isDark ? theme.colors.text.dark : theme.colors.gray[700]},
-          ]}>
-          Back
-        </Text>
-      </TouchableOpacity>
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -1171,28 +1225,124 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  matchCard: {
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing[2],
+    overflow: 'hidden',
   },
-  backButton: {
+  matchCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: theme.spacing[3],
+  },
+
+  // Left section styles (match info)
+  matchLeftSection: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    marginRight: theme.spacing[2],
+    maxWidth: '70%',
+  },
+  matchInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
+    marginBottom: theme.spacing[1],
   },
-  backButtonText: {
-    fontSize: theme.typography.fontSize.base,
+  matchPosition: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '600',
+    marginRight: theme.spacing[2],
+  },
+  matchDate: {
+    fontSize: theme.typography.fontSize.xs,
+  },
+  opponentRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
+  },
+  teamLogoContainer: {
+    marginRight: theme.spacing[2],
+    marginBottom: theme.spacing[1],
+  },
+  partnerName: {
+    fontSize: theme.typography.fontSize.xs,
+    marginTop: 2,
+  },
+  opponentName: {
+    fontSize: theme.typography.fontSize.sm,
     fontWeight: '500',
-    marginLeft: theme.spacing[1],
+    flexShrink: 1,
+  },
+
+  // Right section styles (scores)
+  matchRightSection: {
+    alignItems: 'flex-end',
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  resultChip: {
+    paddingHorizontal: theme.spacing[1.5],
+    paddingVertical: theme.spacing[0.5],
+    borderRadius: theme.borderRadius.full,
+    marginBottom: theme.spacing[1],
+    alignSelf: 'flex-end',
+  },
+  resultChipText: {
+    color: theme.colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  dnfScoreText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontStyle: 'italic',
+  },
+  scoresGrid: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  scoreSetColumn: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginHorizontal: theme.spacing[1],
+    minWidth: 16,
+  },
+  scoreValue: {
+    fontSize: theme.typography.fontSize.base,
+    textAlign: 'center',
+    height: 20, // Fixed height to ensure alignment
+    lineHeight: 20,
+  },
+  winnerScore: {
+    fontWeight: '700',
+  },
+  loserScore: {
+    fontWeight: '400',
+  },
+  tiebreakValue: {
+    fontSize: 9,
+    marginTop: -2,
+    textAlign: 'center',
+  },
+  container: {
+    flex: 1,
+    marginTop: 70,
   },
   scrollContent: {
     padding: theme.spacing[4],
-    paddingBottom: theme.spacing[40], // Extra space at bottom for bottom navigation
+    paddingBottom: theme.spacing[40],
   },
   loadingText: {
     marginTop: theme.spacing[4],
     fontSize: theme.typography.fontSize.base,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
@@ -1373,6 +1523,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     padding: theme.spacing[4],
   },
+
   matchTypeSection: {
     marginBottom: theme.spacing[4],
   },
@@ -1382,40 +1533,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[2],
     paddingLeft: theme.spacing[1],
   },
-  matchCard: {
-    borderWidth: 1,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing[3],
-  },
-  matchCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing[3],
-  },
   matchMeta: {
     width: 70,
-  },
-  matchPosition: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
-  },
-  matchDate: {
-    fontSize: theme.typography.fontSize.xs,
-    marginTop: theme.spacing[1],
   },
   matchOpponent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[2],
-  },
-  partnerName: {
-    fontSize: theme.typography.fontSize.xs,
-  },
-  opponentName: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: '500',
-    marginLeft: theme.spacing[2],
   },
   resultContainer: {
     borderWidth: 1,
@@ -1443,9 +1568,10 @@ const styles = StyleSheet.create({
     rowGap: 10,
   },
   matchTypeFilter: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flex: 2,
+    marginRight: theme.spacing[2],
   },
   filterOption: {
     paddingVertical: theme.spacing[2],
@@ -1457,6 +1583,59 @@ const styles = StyleSheet.create({
   },
   filterOptionActive: {
     backgroundColor: theme.colors.primary[500],
+  },
+  opponentRowSingles: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+  },
+  opponentRowDoubles: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    flexWrap: 'nowrap',
+  },
+  doublesNames: {
+    flexDirection: 'column',
+  },
+  opponentContainer: {
+    flexDirection: 'column',
+  },
+  // Section header with sort
+  sectionHeaderWithSort: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing[4],
+  },
+  sortToggleContainer: {
+    flexDirection: 'row',
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  sortButton: {
+    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+  },
+  sortButtonActive: {
+    borderRadius: theme.borderRadius.sm,
+  },
+  sortButtonText: {
+    fontSize: theme.typography.fontSize.xs,
+  },
+  scoreWithSuperscript: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    height: 20,
+  },
+  tiebreakSuper: {
+    fontSize: 9,
+    lineHeight: 10,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 1,
+    marginTop: 1,
   },
 });
 
