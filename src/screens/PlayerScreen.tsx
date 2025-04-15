@@ -128,8 +128,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [calculatedStats, setCalculatedStats] = useState<PlayerStats | null>(
     null,
   );
-  // Add new state for match sorting
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [wtnData, setWtnData] = useState<Array<any>>([]);
 
   // Toggle dropdown for season selection
   const toggleDropdown = () => {
@@ -160,6 +160,17 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       const teamData: any = await fetchPlayerTeam(playerId);
       setPlayerTeam(teamData);
 
+      // Fetch WTN data
+      try {
+        const wtnResult = await api.players.getWTN(playerId);
+        console.log(wtnResult);
+        setWtnData(wtnResult || []);
+        console.log('WTN Data:', wtnResult);
+      } catch (err) {
+        console.error('Error fetching WTN data:', err);
+        setWtnData([]);
+      }
+
       // Fetch player match results
       const results: any = await fetchPlayerMatches(playerId, selectedSeason);
       setMatchResults(results);
@@ -181,6 +192,41 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  // Helper function to get WTN values for the current season
+  const getWtnValues = () => {
+    if (!wtnData || wtnData.length === 0) return {singles: null, doubles: null};
+
+    // Filter to current season if possible
+    let seasonWTNs = wtnData;
+
+    // Find the season_id that corresponds to the selected season year
+    const seasonYear = selectedSeason;
+    const seasonData = wtnData.filter(wtn => {
+      return (
+        wtn.season_id &&
+        ((seasonYear === '2022' &&
+          wtn.season_id === '63977e81-421d-43cc-9932-eccdfa245b87') ||
+          (seasonYear === '2023' &&
+            wtn.season_id === '0d09ee6d-c173-4d98-8207-7c944409faf0') ||
+          (seasonYear === '2024' &&
+            wtn.season_id === '0e384cf2-fba6-4bd3-a441-7eb5b2c40300'))
+      );
+    });
+
+    if (seasonData.length > 0) {
+      seasonWTNs = seasonData;
+    }
+
+    // Get singles and doubles WTN values
+    const singlesWTN = seasonWTNs.find(wtn => wtn.wtn_type === 'SINGLE');
+    const doublesWTN = seasonWTNs.find(wtn => wtn.wtn_type === 'DOUBLE');
+
+    return {
+      singles: singlesWTN?.tennis_number || null,
+      doubles: doublesWTN?.tennis_number || null,
+    };
   };
 
   // Fetch player's team
@@ -356,21 +402,42 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   if (!player) return null;
 
   // Render player header with avatar and info
-  const renderPlayerHeader = () => (
-    <View
-      style={[
-        styles.headerCard,
-        {
-          backgroundColor: isDark
-            ? theme.colors.card.dark
-            : theme.colors.card.light,
-        },
-      ]}>
-      <View style={styles.headerContent}>
-        {/* Player Avatar */}
-        {player.avatar_url ? (
-          <View style={styles.avatarContainer}>
-            {/* You would use an Image component here */}
+  const renderPlayerHeader = () => {
+    const wtnValues = getWtnValues();
+    return (
+      <View
+        style={[
+          styles.headerCard,
+          {
+            backgroundColor: isDark
+              ? theme.colors.card.dark
+              : theme.colors.card.light,
+          },
+        ]}>
+        <View style={styles.headerContent}>
+          {/* Player Avatar */}
+          {player.avatar_url ? (
+            <View style={styles.avatarContainer}>
+              {/* You would use an Image component here */}
+              <View
+                style={[
+                  styles.avatar,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.gray[800]
+                      : theme.colors.gray[300],
+                  },
+                ]}>
+                <Icon
+                  name="user"
+                  size={40}
+                  color={
+                    isDark ? theme.colors.gray[600] : theme.colors.gray[400]
+                  }
+                />
+              </View>
+            </View>
+          ) : (
             <View
               style={[
                 styles.avatar,
@@ -386,414 +453,423 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 color={isDark ? theme.colors.gray[600] : theme.colors.gray[400]}
               />
             </View>
+          )}
+
+          {/* Player Info */}
+          <View style={styles.playerInfo}>
+            <Text
+              style={[
+                styles.playerName,
+                {
+                  color: isDark
+                    ? theme.colors.text.dark
+                    : theme.colors.text.light,
+                },
+              ]}>
+              {player.first_name} {player.last_name}
+            </Text>
+
+            {/* WTN Data Display */}
+            {(wtnValues.singles !== null || wtnValues.doubles !== null) && (
+              <View style={styles.wtnContainer}>
+                {wtnValues.singles !== null && (
+                  <View style={styles.wtnBadge}>
+                    <Text style={styles.wtnLabel}>UTR-S</Text>
+                    <Text style={styles.wtnValue}>
+                      {wtnValues.singles.toFixed(1)}
+                    </Text>
+                  </View>
+                )}
+
+                {wtnValues.doubles !== null && (
+                  <View style={styles.wtnBadge}>
+                    <Text style={styles.wtnLabel}>UTR-D</Text>
+                    <Text style={styles.wtnValue}>
+                      {wtnValues.doubles.toFixed(1)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {playerTeam && (
+              <TouchableOpacity
+                onPress={() => playerTeam.id && navigateToTeam(playerTeam.id)}
+                style={styles.teamButton}>
+                {playerTeam.id && (
+                  <TeamLogo teamId={playerTeam.id} size="small" />
+                )}
+                <Text
+                  style={[
+                    styles.teamName,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[600],
+                    },
+                  ]}>
+                  {playerTeam.name}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-        ) : (
-          <View
+        </View>
+
+        {/* Season Selector */}
+        <View style={styles.seasonSelector}>
+          <TouchableOpacity
             style={[
-              styles.avatar,
+              styles.dropdownButton,
               {
                 backgroundColor: isDark
-                  ? theme.colors.gray[800]
-                  : theme.colors.gray[300],
+                  ? theme.colors.background.dark
+                  : theme.colors.gray[50],
+                borderColor: isDark
+                  ? theme.colors.border.dark
+                  : theme.colors.border.light,
               },
-            ]}>
+            ]}
+            onPress={toggleDropdown}>
+            <Icon name="calendar" size={16} color={theme.colors.primary[500]} />
+            <Text
+              style={[
+                styles.dropdownLabel,
+                {
+                  color: isDark
+                    ? theme.colors.text.dark
+                    : theme.colors.text.light,
+                },
+              ]}>
+              {selectedSeason}-{parseInt(selectedSeason) + 1} Season
+            </Text>
             <Icon
-              name="user"
-              size={40}
-              color={isDark ? theme.colors.gray[600] : theme.colors.gray[400]}
+              name="chevron-down"
+              size={16}
+              color={
+                isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
+              }
             />
-          </View>
-        )}
+          </TouchableOpacity>
 
-        {/* Player Info */}
-        <View style={styles.playerInfo}>
-          <Text
-            style={[
-              styles.playerName,
-              {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {player.first_name} {player.last_name}
-          </Text>
-
-          {playerTeam && (
+          {/* Dropdown Modal */}
+          <Modal
+            visible={dropdownVisible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setDropdownVisible(false)}>
             <TouchableOpacity
-              onPress={() => playerTeam.id && navigateToTeam(playerTeam.id)}
-              style={styles.teamButton}>
-              {playerTeam.id && (
-                <TeamLogo teamId={playerTeam.id} size="small" />
-              )}
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setDropdownVisible(false)}>
+              <View
+                style={[
+                  styles.dropdownMenu,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.card.dark
+                      : theme.colors.card.light,
+                    top: 220, // Position below the dropdown button
+                  },
+                ]}>
+                {seasons.map(season => (
+                  <TouchableOpacity
+                    key={season}
+                    style={[
+                      styles.dropdownItem,
+                      selectedSeason === season && {
+                        backgroundColor: isDark
+                          ? theme.colors.primary[900]
+                          : theme.colors.primary[50],
+                      },
+                    ]}
+                    onPress={() => selectSeason(season)}>
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        {
+                          color: isDark
+                            ? theme.colors.text.dark
+                            : theme.colors.text.light,
+                        },
+                        selectedSeason === season && {
+                          color: isDark
+                            ? theme.colors.primary[400]
+                            : theme.colors.primary[600],
+                          fontWeight: '600',
+                        },
+                      ]}>
+                      {season}-{parseInt(season) + 1}
+                    </Text>
+                    {selectedSeason === season && (
+                      <Icon
+                        name="check"
+                        size={16}
+                        color={theme.colors.primary[500]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        </View>
+
+        {/* Match Type Filters Row */}
+        <View style={styles.filtersRow}>
+          {/* Match Type Filter */}
+          <View style={styles.matchTypeFilter}>
+            <TouchableOpacity
+              style={[
+                styles.filterOption,
+                matchTypeFilter === 'all' && styles.filterOptionActive,
+                {
+                  backgroundColor:
+                    matchTypeFilter === 'all'
+                      ? theme.colors.primary[500]
+                      : isDark
+                      ? theme.colors.background.dark
+                      : theme.colors.gray[100],
+                },
+              ]}
+              onPress={() => setMatchTypeFilter('all')}>
+              <Text
+                style={{
+                  color:
+                    matchTypeFilter === 'all'
+                      ? theme.colors.white
+                      : isDark
+                      ? theme.colors.text.dark
+                      : theme.colors.gray[700],
+                  fontSize: theme.typography.fontSize.xs,
+                  fontWeight: '600',
+                }}>
+                All
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterOption,
+                matchTypeFilter === 'dual' && styles.filterOptionActive,
+                {
+                  backgroundColor:
+                    matchTypeFilter === 'dual'
+                      ? theme.colors.primary[500]
+                      : isDark
+                      ? theme.colors.background.dark
+                      : theme.colors.gray[100],
+                },
+              ]}
+              onPress={() => setMatchTypeFilter('dual')}>
+              <Text
+                style={{
+                  color:
+                    matchTypeFilter === 'dual'
+                      ? theme.colors.white
+                      : isDark
+                      ? theme.colors.text.dark
+                      : theme.colors.gray[700],
+                  fontSize: theme.typography.fontSize.xs,
+                  fontWeight: '600',
+                }}>
+                Dual
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterOption,
+                matchTypeFilter === 'non-dual' && styles.filterOptionActive,
+                {
+                  backgroundColor:
+                    matchTypeFilter === 'non-dual'
+                      ? theme.colors.primary[500]
+                      : isDark
+                      ? theme.colors.background.dark
+                      : theme.colors.gray[100],
+                },
+              ]}
+              onPress={() => setMatchTypeFilter('non-dual')}>
+              <Text
+                style={{
+                  color:
+                    matchTypeFilter === 'non-dual'
+                      ? theme.colors.white
+                      : isDark
+                      ? theme.colors.text.dark
+                      : theme.colors.gray[700],
+                  fontSize: theme.typography.fontSize.xs,
+                  fontWeight: '600',
+                }}>
+                Non-Dual
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Player Stats Cards */}
+        {calculatedStats && (
+          <View style={styles.statsContainer}>
+            {/* Singles Stats Card */}
+            <View
+              style={[
+                styles.statsCard,
+                {
+                  backgroundColor: isDark
+                    ? theme.colors.background.dark
+                    : theme.colors.gray[50],
+                  borderColor: isDark
+                    ? theme.colors.border.dark
+                    : theme.colors.border.light,
+                },
+              ]}>
               <Text
                 style={[
-                  styles.teamName,
+                  styles.statsCardTitle,
                   {
                     color: isDark
                       ? theme.colors.text.dimDark
                       : theme.colors.gray[600],
                   },
                 ]}>
-                {playerTeam.name}
+                Singles
               </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Season Selector */}
-      <View style={styles.seasonSelector}>
-        <TouchableOpacity
-          style={[
-            styles.dropdownButton,
-            {
-              backgroundColor: isDark
-                ? theme.colors.background.dark
-                : theme.colors.gray[50],
-              borderColor: isDark
-                ? theme.colors.border.dark
-                : theme.colors.border.light,
-            },
-          ]}
-          onPress={toggleDropdown}>
-          <Icon name="calendar" size={16} color={theme.colors.primary[500]} />
-          <Text
-            style={[
-              styles.dropdownLabel,
-              {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {selectedSeason}-{parseInt(selectedSeason) + 1} Season
-          </Text>
-          <Icon
-            name="chevron-down"
-            size={16}
-            color={isDark ? theme.colors.text.dimDark : theme.colors.gray[500]}
-          />
-        </TouchableOpacity>
-
-        {/* Dropdown Modal */}
-        <Modal
-          visible={dropdownVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setDropdownVisible(false)}>
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setDropdownVisible(false)}>
-            <View
-              style={[
-                styles.dropdownMenu,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.card.dark
-                    : theme.colors.card.light,
-                  top: 220, // Position below the dropdown button
-                },
-              ]}>
-              {seasons.map(season => (
-                <TouchableOpacity
-                  key={season}
-                  style={[
-                    styles.dropdownItem,
-                    selectedSeason === season && {
-                      backgroundColor: isDark
-                        ? theme.colors.primary[900]
-                        : theme.colors.primary[50],
-                    },
-                  ]}
-                  onPress={() => selectSeason(season)}>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
                   <Text
                     style={[
-                      styles.dropdownItemText,
+                      styles.statValue,
                       {
                         color: isDark
                           ? theme.colors.text.dark
                           : theme.colors.text.light,
                       },
-                      selectedSeason === season && {
+                    ]}>
+                    {calculatedStats.singles_wins}-
+                    {calculatedStats.singles_losses}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statLabel,
+                      {
                         color: isDark
-                          ? theme.colors.primary[400]
-                          : theme.colors.primary[600],
-                        fontWeight: '600',
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500],
                       },
                     ]}>
-                    {season}-{parseInt(season) + 1}
+                    Record
                   </Text>
-                  {selectedSeason === season && (
-                    <Icon
-                      name="check"
-                      size={16}
-                      color={theme.colors.primary[500]}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text
+                    style={[
+                      styles.statValue,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dark
+                          : theme.colors.text.light,
+                      },
+                    ]}>
+                    {calculatedStats.singles_win_pct.toFixed(1)}%
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statLabel,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500],
+                      },
+                    ]}>
+                    Win %
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
+              </View>
             </View>
-          </TouchableOpacity>
-        </Modal>
-      </View>
 
-      {/* Match Type Filters Row */}
-      <View style={styles.filtersRow}>
-        {/* Match Type Filter */}
-        <View style={styles.matchTypeFilter}>
-          <TouchableOpacity
-            style={[
-              styles.filterOption,
-              matchTypeFilter === 'all' && styles.filterOptionActive,
-              {
-                backgroundColor:
-                  matchTypeFilter === 'all'
-                    ? theme.colors.primary[500]
-                    : isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[100],
-              },
-            ]}
-            onPress={() => setMatchTypeFilter('all')}>
-            <Text
-              style={{
-                color:
-                  matchTypeFilter === 'all'
-                    ? theme.colors.white
-                    : isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.gray[700],
-                fontSize: theme.typography.fontSize.xs,
-                fontWeight: '600',
-              }}>
-              All
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterOption,
-              matchTypeFilter === 'dual' && styles.filterOptionActive,
-              {
-                backgroundColor:
-                  matchTypeFilter === 'dual'
-                    ? theme.colors.primary[500]
-                    : isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[100],
-              },
-            ]}
-            onPress={() => setMatchTypeFilter('dual')}>
-            <Text
-              style={{
-                color:
-                  matchTypeFilter === 'dual'
-                    ? theme.colors.white
-                    : isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.gray[700],
-                fontSize: theme.typography.fontSize.xs,
-                fontWeight: '600',
-              }}>
-              Dual
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterOption,
-              matchTypeFilter === 'non-dual' && styles.filterOptionActive,
-              {
-                backgroundColor:
-                  matchTypeFilter === 'non-dual'
-                    ? theme.colors.primary[500]
-                    : isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[100],
-              },
-            ]}
-            onPress={() => setMatchTypeFilter('non-dual')}>
-            <Text
-              style={{
-                color:
-                  matchTypeFilter === 'non-dual'
-                    ? theme.colors.white
-                    : isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.gray[700],
-                fontSize: theme.typography.fontSize.xs,
-                fontWeight: '600',
-              }}>
-              Non-Dual
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Player Stats Cards */}
-      {calculatedStats && (
-        <View style={styles.statsContainer}>
-          {/* Singles Stats Card */}
-          <View
-            style={[
-              styles.statsCard,
-              {
-                backgroundColor: isDark
-                  ? theme.colors.background.dark
-                  : theme.colors.gray[50],
-                borderColor: isDark
-                  ? theme.colors.border.dark
-                  : theme.colors.border.light,
-              },
-            ]}>
-            <Text
+            {/* Doubles Stats Card */}
+            <View
               style={[
-                styles.statsCardTitle,
+                styles.statsCard,
                 {
-                  color: isDark
-                    ? theme.colors.text.dimDark
-                    : theme.colors.gray[600],
+                  backgroundColor: isDark
+                    ? theme.colors.background.dark
+                    : theme.colors.gray[50],
+                  borderColor: isDark
+                    ? theme.colors.border.dark
+                    : theme.colors.border.light,
                 },
               ]}>
-              Singles
-            </Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {calculatedStats.singles_wins}-
-                  {calculatedStats.singles_losses}
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  Record
-                </Text>
+              <Text
+                style={[
+                  styles.statsCardTitle,
+                  {
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                Doubles
+              </Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text
+                    style={[
+                      styles.statValue,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dark
+                          : theme.colors.text.light,
+                      },
+                    ]}>
+                    {calculatedStats.doubles_wins}-
+                    {calculatedStats.doubles_losses}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statLabel,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500],
+                      },
+                    ]}>
+                    Record
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text
+                    style={[
+                      styles.statValue,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dark
+                          : theme.colors.text.light,
+                      },
+                    ]}>
+                    {calculatedStats.doubles_win_pct.toFixed(1)}%
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statLabel,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[500],
+                      },
+                    ]}>
+                    Win %
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {calculatedStats.singles_win_pct.toFixed(1)}%
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  Win %
-                </Text>
-              </View>
-              <View style={styles.statDivider} />
             </View>
           </View>
-
-          {/* Doubles Stats Card */}
-          <View
-            style={[
-              styles.statsCard,
-              {
-                backgroundColor: isDark
-                  ? theme.colors.background.dark
-                  : theme.colors.gray[50],
-                borderColor: isDark
-                  ? theme.colors.border.dark
-                  : theme.colors.border.light,
-              },
-            ]}>
-            <Text
-              style={[
-                styles.statsCardTitle,
-                {
-                  color: isDark
-                    ? theme.colors.text.dimDark
-                    : theme.colors.gray[600],
-                },
-              ]}>
-              Doubles
-            </Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {calculatedStats.doubles_wins}-
-                  {calculatedStats.doubles_losses}
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  Record
-                </Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {calculatedStats.doubles_win_pct.toFixed(1)}%
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  Win %
-                </Text>
-              </View>
-              <View style={styles.statDivider} />
-            </View>
-          </View>
-        </View>
-      )}
-    </View>
-  );
+        )}
+      </View>
+    );
+  };
 
   // Render positions played chart
   const renderPositionsChart = () => {
@@ -914,8 +990,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       const sets = parseScoreSets(item.score);
 
       // Log parsed score data for debugging
-      console.log(`Match ID: ${item.id}, Score: ${item.score}`);
-      console.log('Parsed sets:', sets);
+      // console.log(`Match ID: ${item.id}, Score: ${item.score}`);
+      // console.log('Parsed sets:', sets);
 
       return (
         <TouchableOpacity
@@ -930,8 +1006,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 : theme.colors.border.light,
             },
           ]}
-          onPress={() => navigateToMatch(item.match_id)}
-          activeOpacity={0.7}>
+          activeOpacity={0.7}
+          disabled={true}>
           <View style={styles.matchCardContent}>
             {/* Left Section: Match Info */}
             <View style={styles.matchLeftSection}>
@@ -1636,6 +1712,32 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 1,
     marginTop: 1,
+  },
+  wtnContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: -25,
+  },
+  wtnBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary[500],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginHorizontal: 4,
+  },
+  wtnLabel: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginRight: 4,
+  },
+  wtnValue: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

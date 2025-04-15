@@ -120,6 +120,15 @@ export interface PlayerMatchResult {
   opponent_name1: string;
   opponent_name2?: string;
 }
+export interface PlayerWTN {
+  person_id: string;
+  tennis_id: string;
+  season_id: string;
+  wtn_type: string; // "SINGLES" or "DOUBLES"
+  confidence: number;
+  tennis_number: number;
+  is_ranked: boolean;
+}
 
 // Create axios instance
 const apiClient = axios.create({
@@ -371,10 +380,13 @@ export const api = {
         throw error;
       }
     },
-    getWTN: async (id: string): Promise<any> => {
+
+    getWTN: async (id: string, season?: string): Promise<any> => {
+      const params = season ? {season} : {};
       try {
         const response: AxiosResponse<any> = await apiClient.get(
           `/players/${id}/wtn`,
+          {params},
         );
         return response.data;
       } catch (error) {
