@@ -129,6 +129,13 @@ export interface PlayerWTN {
   tennis_number: number;
   is_ranked: boolean;
 }
+export interface Season {
+  id: string;
+  name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+}
 
 // Create axios instance
 const apiClient = axios.create({
@@ -425,6 +432,29 @@ export const api = {
         return response.data;
       } catch (error) {
         console.error(`Failed to fetch stats for player ${playerId}:`, error);
+        throw error;
+      }
+    },
+  },
+  seasons: {
+    getAll: async (): Promise<Season[]> => {
+      try {
+        const response: AxiosResponse<Season[]> = await apiClient.get(
+          '/seasons',
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch seasons:', error);
+        throw error;
+      }
+    },
+    getByName: async (name: string): Promise<Season | null> => {
+      try {
+        const allSeasons = await api.seasons.getAll();
+        const season = allSeasons.find(s => s.name === name);
+        return season || null;
+      } catch (error) {
+        console.error(`Failed to fetch season by name: ${name}`, error);
         throw error;
       }
     },

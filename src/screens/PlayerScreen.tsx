@@ -64,6 +64,7 @@ interface TeamInfo {
   id: string;
   name: string;
   abbreviation?: string;
+  team_name: string;
 }
 
 interface MatchResult {
@@ -130,6 +131,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   );
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [wtnData, setWtnData] = useState<Array<any>>([]);
+  const [seasonsData, setSeasonsData] = useState<{[name: string]: string}>({});
+  const [loadingSeasons, setLoadingSeasons] = useState<boolean>(false);
 
   // Toggle dropdown for season selection
   const toggleDropdown = () => {
@@ -159,13 +162,19 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       // Find player's team
       const teamData: any = await fetchPlayerTeam(playerId);
       setPlayerTeam(teamData);
+      console.log(teamData);
 
-      // Fetch WTN data
+      // Fetch WTN data - pass the season if we have seasons data loaded
       try {
-        const wtnResult = await api.players.getWTN(playerId);
-        console.log(wtnResult);
+        // Get the season ID for the selected season
+        const seasonId = seasonsData[selectedSeason];
+        // If we have the season ID, fetch WTN with season filter
+        // Otherwise fetch all WTN data and filter client-side
+        const wtnResult = await api.players.getWTN(
+          playerId,
+          seasonId ? selectedSeason : undefined,
+        );
         setWtnData(wtnResult || []);
-        console.log('WTN Data:', wtnResult);
       } catch (err) {
         console.error('Error fetching WTN data:', err);
         setWtnData([]);
@@ -175,8 +184,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       const results: any = await fetchPlayerMatches(playerId, selectedSeason);
       setMatchResults(results);
       setFilteredMatches(results);
-
-      console.log(results);
 
       // Initially calculate stats based on all matches
       setCalculatedStats(calculateStatsFromFilteredMatches(results));
@@ -201,22 +208,15 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     // Filter to current season if possible
     let seasonWTNs = wtnData;
 
-    // Find the season_id that corresponds to the selected season year
-    const seasonYear = selectedSeason;
-    const seasonData = wtnData.filter(wtn => {
-      return (
-        wtn.season_id &&
-        ((seasonYear === '2022' &&
-          wtn.season_id === '63977e81-421d-43cc-9932-eccdfa245b87') ||
-          (seasonYear === '2023' &&
-            wtn.season_id === '0d09ee6d-c173-4d98-8207-7c944409faf0') ||
-          (seasonYear === '2024' &&
-            wtn.season_id === '0e384cf2-fba6-4bd3-a441-7eb5b2c40300'))
-      );
-    });
+    // Get the season ID for the selected season name
+    const seasonId = seasonsData[selectedSeason];
 
-    if (seasonData.length > 0) {
-      seasonWTNs = seasonData;
+    if (seasonId) {
+      // Filter WTN data by the current season ID
+      const seasonData = wtnData.filter(wtn => wtn.season_id === seasonId);
+      if (seasonData.length > 0) {
+        seasonWTNs = seasonData;
+      }
     }
 
     // Get singles and doubles WTN values
@@ -272,8 +272,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       doubles_wins: doublesWins,
       doubles_losses: doublesLosses,
       doubles_win_pct: doublesWinPct,
-      wtn_singles: playerStats?.wtn_singles, // Keep WTN ratings from API
-      wtn_doubles: playerStats?.wtn_doubles, // Keep WTN ratings from API
+      wtn_singles: playerStats?.wtn_singles,
+      wtn_doubles: playerStats?.wtn_doubles,
     };
   };
 
@@ -281,7 +281,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const fetchPlayerPositions = async (playerId: string, season: string) => {
     try {
       const positionsData = await api.players.getPositions(playerId, season);
-      console.log(positionsData);
 
       // Store the complete positions data
       setPositionsData(positionsData);
@@ -290,10 +289,34 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     }
   };
 
+  const fetchSeasons = async () => {
+    try {
+      setLoadingSeasons(true);
+      const seasons = await api.seasons.getAll();
+
+      // Create a mapping of season name to season ID
+      const seasonsMap: {[name: string]: string} = {};
+      seasons.forEach(season => {
+        seasonsMap[season.name] = season.id;
+      });
+
+      setSeasonsData(seasonsMap);
+      console.log('Seasons data loaded:', seasonsMap);
+    } catch (err) {
+      console.error('Error fetching seasons:', err);
+    } finally {
+      setLoadingSeasons(false);
+    }
+  };
+
   // Initial load of data
   useEffect(() => {
     fetchPlayerData();
-  }, [playerId, selectedSeason]);
+  }, [playerId, selectedSeason, seasonsData]);
+
+  useEffect(() => {
+    fetchSeasons();
+  }, []);
 
   // This function determines if a match is a dual match
   const isDualMatch = (match: MatchResult) => {
@@ -303,6 +326,12 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   // This function classifies the match type
   const getMatchType = (match: MatchResult) => {
     return isDualMatch(match) ? 'dual' : 'non-dual';
+  };
+
+  const parseTeamName = (teamName: string) => {
+    // Remove gender designation like "(M)" or "(W)" from the end
+    const nameParts = teamName.split(/\s*\([MW]\)\s*$/);
+    return nameParts[0]; // Return the name without the gender designation
   };
 
   // Filter and sort matches based on filters and sort order
@@ -404,6 +433,11 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   // Render player header with avatar and info
   const renderPlayerHeader = () => {
     const wtnValues = getWtnValues();
+    console.log(playerTeam);
+    const universityName = playerTeam?.team_name
+      ? parseTeamName(playerTeam.team_name)
+      : '';
+
     return (
       <View
         style={[
@@ -468,6 +502,21 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
               ]}>
               {player.first_name} {player.last_name}
             </Text>
+
+            {/* Display University Name */}
+            {universityName && (
+              <Text
+                style={[
+                  styles.universityName,
+                  {
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                {universityName}
+              </Text>
+            )}
 
             {/* WTN Data Display */}
             {(wtnValues.singles !== null || wtnValues.doubles !== null) && (
@@ -1738,6 +1787,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  universityName: {
+    fontSize: theme.typography.fontSize.base,
+    marginVertical: theme.spacing[1],
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 
