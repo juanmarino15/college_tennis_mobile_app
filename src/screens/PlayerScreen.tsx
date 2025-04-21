@@ -145,11 +145,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     setDropdownVisible(false);
   };
 
-  // Set sort order
-  const setMatchSortOrder = (order: 'newest' | 'oldest') => {
-    setSortOrder(order);
-  };
-
   // Fetch player data
   const fetchPlayerData = async () => {
     try {
@@ -323,11 +318,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     return match.position > 0;
   };
 
-  // This function classifies the match type
-  const getMatchType = (match: MatchResult) => {
-    return isDualMatch(match) ? 'dual' : 'non-dual';
-  };
-
+  // Parse team name (removed duplicate function)
   const parseTeamName = (teamName: string) => {
     // Remove gender designation like "(M)" or "(W)" from the end
     const nameParts = teamName.split(/\s*\([MW]\)\s*$/);
@@ -365,11 +356,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchPlayerData();
-  };
-
-  // Navigate to match details
-  const navigateToMatch = (matchId: string) => {
-    navigation.navigate('MatchDetail', {matchId});
   };
 
   // Navigate to team details
@@ -969,8 +955,9 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     );
   };
 
-  // Render match results
+  // This is a continuation of the PlayerScreen.tsx cleanup
 
+  // The renderMatchResults function with unused code removed and simplified
   const renderMatchResults = () => {
     // Filter matches by type
     const singles = filteredMatches.filter(
@@ -1037,10 +1024,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       const isDnf = isDnfScore(item.score);
       // Parse score sets
       const sets = parseScoreSets(item.score);
-
-      // Log parsed score data for debugging
-      // console.log(`Match ID: ${item.id}, Score: ${item.score}`);
-      // console.log('Parsed sets:', sets);
 
       return (
         <TouchableOpacity
@@ -1253,9 +1236,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
               : theme.colors.card.light,
           },
         ]}>
-        {/* Rest of the code remains the same */}
-        <View style={styles.sectionHeaderWithSort}>{/* ... */}</View>
-
         {filteredMatches.length === 0 ? (
           <Text
             style={[
@@ -1321,6 +1301,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     );
   };
 
+  // Main render function
   return (
     <View
       style={[
@@ -1349,108 +1330,9 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   );
 };
 
+// Cleaned up StyleSheet - removed unused styles and consolidated duplicate styles
 const styles = StyleSheet.create({
-  matchCard: {
-    borderWidth: 1,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing[2],
-    overflow: 'hidden',
-  },
-  matchCardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: theme.spacing[3],
-  },
-
-  // Left section styles (match info)
-  matchLeftSection: {
-    flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'center',
-    marginRight: theme.spacing[2],
-    maxWidth: '70%',
-  },
-  matchInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing[1],
-  },
-  matchPosition: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
-    marginRight: theme.spacing[2],
-  },
-  matchDate: {
-    fontSize: theme.typography.fontSize.xs,
-  },
-  opponentRow: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    alignItems: 'center',
-  },
-  teamLogoContainer: {
-    marginRight: theme.spacing[2],
-    marginBottom: theme.spacing[1],
-  },
-  partnerName: {
-    fontSize: theme.typography.fontSize.xs,
-    marginTop: 2,
-  },
-  opponentName: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: '500',
-    flexShrink: 1,
-  },
-
-  // Right section styles (scores)
-  matchRightSection: {
-    alignItems: 'flex-end',
-    minWidth: 100,
-    justifyContent: 'center',
-  },
-  resultChip: {
-    paddingHorizontal: theme.spacing[1.5],
-    paddingVertical: theme.spacing[0.5],
-    borderRadius: theme.borderRadius.full,
-    marginBottom: theme.spacing[1],
-    alignSelf: 'flex-end',
-  },
-  resultChipText: {
-    color: theme.colors.white,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  dnfScoreText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontStyle: 'italic',
-  },
-  scoresGrid: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  scoreSetColumn: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginHorizontal: theme.spacing[1],
-    minWidth: 16,
-  },
-  scoreValue: {
-    fontSize: theme.typography.fontSize.base,
-    textAlign: 'center',
-    height: 20, // Fixed height to ensure alignment
-    lineHeight: 20,
-  },
-  winnerScore: {
-    fontWeight: '700',
-  },
-  loserScore: {
-    fontWeight: '400',
-  },
-  tiebreakValue: {
-    fontSize: 9,
-    marginTop: -2,
-    textAlign: 'center',
-  },
+  // Container styles
   container: {
     flex: 1,
     marginTop: 70,
@@ -1459,15 +1341,17 @@ const styles = StyleSheet.create({
     padding: theme.spacing[4],
     paddingBottom: theme.spacing[40],
   },
-  loadingText: {
-    marginTop: theme.spacing[4],
-    fontSize: theme.typography.fontSize.base,
-    textAlign: 'center',
-  },
+
+  // Loading and error states
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: theme.spacing[4],
+    fontSize: theme.typography.fontSize.base,
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,
@@ -1493,12 +1377,22 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: '600',
   },
+
+  // Card styles
   headerCard: {
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing[4],
     marginBottom: theme.spacing[4],
     ...theme.shadows.md,
   },
+  sectionCard: {
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing[4],
+    marginBottom: theme.spacing[4],
+    ...theme.shadows.md,
+  },
+
+  // Header content
   headerContent: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1525,6 +1419,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  universityName: {
+    fontSize: theme.typography.fontSize.base,
+    marginVertical: theme.spacing[1],
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  // Team button
   teamButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1537,6 +1439,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     marginLeft: theme.spacing[2],
   },
+
+  // Season selector
   seasonSelector: {
     marginTop: theme.spacing[4],
     alignItems: 'center',
@@ -1586,6 +1490,8 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontSize: theme.typography.fontSize.base,
   },
+
+  // Stats display
   statsContainer: {
     marginTop: theme.spacing[4],
     gap: theme.spacing[3],
@@ -1622,12 +1528,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     marginTop: theme.spacing[1],
   },
-  sectionCard: {
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing[4],
-    marginBottom: theme.spacing[4],
-    ...theme.shadows.md,
-  },
+
+  // Section headers
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1638,52 +1540,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: theme.spacing[2],
   },
-  chartContainer: {
-    marginTop: theme.spacing[2],
-    height: 150,
-    justifyContent: 'center',
-  },
-  emptyStateText: {
-    textAlign: 'center',
-    fontSize: theme.typography.fontSize.base,
-    padding: theme.spacing[4],
-  },
 
-  matchTypeSection: {
-    marginBottom: theme.spacing[4],
-  },
-  matchTypeTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
-    marginBottom: theme.spacing[2],
-    paddingLeft: theme.spacing[1],
-  },
-  matchMeta: {
-    width: 70,
-  },
-  matchOpponent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[2],
-  },
-  resultContainer: {
-    borderWidth: 1,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  resultText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
-  },
-  chartCaption: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 10,
-  },
+  // Filter styles
   filtersRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1709,44 +1567,117 @@ const styles = StyleSheet.create({
   filterOptionActive: {
     backgroundColor: theme.colors.primary[500],
   },
+
+  // Match card styles
+  matchTypeSection: {
+    marginBottom: theme.spacing[4],
+  },
+  matchTypeTitle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    marginBottom: theme.spacing[2],
+    paddingLeft: theme.spacing[1],
+  },
+  matchCard: {
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing[2],
+    overflow: 'hidden',
+  },
+  matchCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: theme.spacing[3],
+  },
+  matchLeftSection: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    marginRight: theme.spacing[2],
+    maxWidth: '70%',
+  },
+  matchInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing[1],
+  },
+  matchPosition: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '600',
+    marginRight: theme.spacing[2],
+  },
+  matchDate: {
+    fontSize: theme.typography.fontSize.xs,
+  },
+
+  // Opponent display
+  opponentContainer: {
+    flexDirection: 'column',
+  },
   opponentRowSingles: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'nowrap',
   },
-  opponentRowDoubles: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    flexWrap: 'nowrap',
+  teamLogoContainer: {
+    marginRight: theme.spacing[2],
+    marginBottom: theme.spacing[1],
   },
-  doublesNames: {
-    flexDirection: 'column',
+  opponentName: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '500',
+    flexShrink: 1,
   },
-  opponentContainer: {
-    flexDirection: 'column',
-  },
-  // Section header with sort
-  sectionHeaderWithSort: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing[4],
-  },
-  sortToggleContainer: {
-    flexDirection: 'row',
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  sortButton: {
-    paddingVertical: theme.spacing[1],
-    paddingHorizontal: theme.spacing[2],
-  },
-  sortButtonActive: {
-    borderRadius: theme.borderRadius.sm,
-  },
-  sortButtonText: {
+  partnerName: {
     fontSize: theme.typography.fontSize.xs,
+    marginTop: 2,
+  },
+
+  // Match result display
+  matchRightSection: {
+    alignItems: 'flex-end',
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  resultChip: {
+    paddingHorizontal: theme.spacing[1.5],
+    paddingVertical: theme.spacing[0.5],
+    borderRadius: theme.borderRadius.full,
+    marginBottom: theme.spacing[1],
+    alignSelf: 'flex-end',
+  },
+  resultChipText: {
+    color: theme.colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  dnfScoreText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontStyle: 'italic',
+  },
+
+  // Score display
+  scoresGrid: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  scoreSetColumn: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginHorizontal: theme.spacing[1],
+    minWidth: 16,
+  },
+  scoreValue: {
+    fontSize: theme.typography.fontSize.base,
+    textAlign: 'center',
+    height: 20, // Fixed height to ensure alignment
+    lineHeight: 20,
+  },
+  winnerScore: {
+    fontWeight: '700',
+  },
+  loserScore: {
+    fontWeight: '400',
   },
   scoreWithSuperscript: {
     flexDirection: 'row',
@@ -1762,6 +1693,8 @@ const styles = StyleSheet.create({
     marginLeft: 1,
     marginTop: 1,
   },
+
+  // WTN styles
   wtnContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -1788,11 +1721,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  universityName: {
-    fontSize: theme.typography.fontSize.base,
-    marginVertical: theme.spacing[1],
-    fontWeight: '500',
+
+  // Empty state
+  emptyStateText: {
     textAlign: 'center',
+    fontSize: theme.typography.fontSize.base,
+    padding: theme.spacing[4],
   },
 });
 

@@ -22,6 +22,7 @@ import MatchDetailScreen from './src/screens/MatchDetailScreen';
 import TeamsScreen from './src/screens/TeamsScreen';
 import TeamDetailScreen from './src/screens/TeamDetailsScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
+import RankingsScreen from './src/screens/RankingsScreen';
 
 // For now, use placeholders
 const PlaceholderScreen = () => <></>;
@@ -38,6 +39,7 @@ type RootStackParamList = {
   MatchDetail: {matchId: string};
   TeamDetail: {teamId: string};
   PlayerDetail: {playerId: string};
+  RankingDetail: {teamId: string};
 };
 
 type TabParamList = {
@@ -106,7 +108,7 @@ const TabNavigator = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="Teams" component={TeamsScreen} />
-      <Tab.Screen name="Rankings" component={PlaceholderScreen} />
+      <Tab.Screen name="Rankings" component={RankingsScreen} />
     </Tab.Navigator>
   );
 };
@@ -171,6 +173,7 @@ const App = () => {
               <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
               <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
               <Stack.Screen name="PlayerDetail" component={PlayerScreen} />
+              <Stack.Screen name="RankingDetail" component={RankingsScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

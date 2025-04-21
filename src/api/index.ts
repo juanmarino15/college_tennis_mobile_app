@@ -4,8 +4,8 @@ import type {AxiosResponse} from 'axios';
 import {Alert} from 'react-native';
 
 // Base URL should come from environment config
-// const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
-const BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
+// const BASE_URL = 'http://localhost:8000/api/v1';
 
 // API response interfaces
 export interface Team {
@@ -135,6 +135,40 @@ export interface Season {
   status: string;
   start_date: string;
   end_date: string;
+}
+export interface RankingList {
+  id: string;
+  division_type: string;
+  gender: string;
+  match_format: string;
+  publish_date?: string;
+  planned_publish_date?: string;
+  date_range_start: string;
+  date_range_end: string;
+}
+
+export interface TeamRanking {
+  team_id: string;
+  ranking_list_id: string;
+  rank: number;
+  points: number;
+  wins: number;
+  losses: number;
+  team_name: string;
+  conference?: string;
+}
+
+export interface PlayerRanking {
+  player_id: string;
+  team_id: string;
+  ranking_list_id: string;
+  rank: number;
+  points: number;
+  wins: number;
+  losses: number;
+  player_name: string;
+  team_name: string;
+  conference?: string;
 }
 
 // Create axios instance
@@ -455,6 +489,225 @@ export const api = {
         return season || null;
       } catch (error) {
         console.error(`Failed to fetch season by name: ${name}`, error);
+        throw error;
+      }
+    },
+  },
+  // Rankings endpoints
+  rankings: {
+    // Team rankings
+    getTeamRankingLists: async (
+      divisionType: string = 'DIV1',
+      gender: string = 'M',
+      limit: number = 100, // Increased default limit
+    ): Promise<RankingList[]> => {
+      try {
+        const response: AxiosResponse<RankingList[]> = await apiClient.get(
+          '/rankings/teams/lists',
+          {params: {division_type: divisionType, gender: gender}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch team ranking lists:', error);
+        throw error;
+      }
+    },
+
+    getTeamRankings: async (
+      rankingId: string,
+      limit: number = 100,
+    ): Promise<TeamRanking[]> => {
+      try {
+        const response: AxiosResponse<TeamRanking[]> = await apiClient.get(
+          `/rankings/teams/lists/${rankingId}`,
+          {params: {limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch team rankings for list ${rankingId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    getLatestTeamRankings: async (
+      divisionType: string = 'DIV1',
+      gender: string = 'M',
+      limit: number = 25,
+    ): Promise<TeamRanking[]> => {
+      try {
+        const response: AxiosResponse<TeamRanking[]> = await apiClient.get(
+          '/rankings/teams/latest',
+          {params: {division_type: divisionType, gender: gender, limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch latest team rankings:', error);
+        throw error;
+      }
+    },
+
+    getTeamRankingHistory: async (
+      teamId: string,
+      limit: number = 10,
+    ): Promise<any> => {
+      try {
+        const response: AxiosResponse<any> = await apiClient.get(
+          `/rankings/teams/${teamId}/history`,
+          {params: {limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch ranking history for team ${teamId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    // Singles rankings
+    getSinglesRankingLists: async (
+      divisionType: string = 'DIV1',
+      gender: string = 'M',
+    ): Promise<RankingList[]> => {
+      try {
+        const response: AxiosResponse<RankingList[]> = await apiClient.get(
+          '/rankings/singles/lists',
+          {params: {division_type: divisionType, gender: gender}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch singles ranking lists:', error);
+        throw error;
+      }
+    },
+
+    getSinglesRankings: async (
+      rankingId: string,
+      limit: number = 100,
+    ): Promise<PlayerRanking[]> => {
+      try {
+        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+          `/rankings/singles/lists/${rankingId}`,
+          {params: {limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch singles rankings for list ${rankingId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    getLatestSinglesRankings: async (
+      divisionType: string = 'DIV1',
+      gender: string = 'M',
+      limit: number = 25,
+    ): Promise<PlayerRanking[]> => {
+      try {
+        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+          '/rankings/singles/latest',
+          {params: {division_type: divisionType, gender: gender, limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch latest singles rankings:', error);
+        throw error;
+      }
+    },
+
+    getPlayerSinglesHistory: async (
+      playerId: string,
+      limit: number = 10,
+    ): Promise<any> => {
+      try {
+        const response: AxiosResponse<any> = await apiClient.get(
+          `/rankings/singles/players/${playerId}/history`,
+          {params: {limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch singles ranking history for player ${playerId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    // Doubles rankings
+    getDoublesRankingLists: async (
+      divisionType: string = 'DIV1',
+      gender: string = 'M',
+    ): Promise<RankingList[]> => {
+      try {
+        const response: AxiosResponse<RankingList[]> = await apiClient.get(
+          '/rankings/doubles/lists',
+          {params: {division_type: divisionType, gender: gender}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch doubles ranking lists:', error);
+        throw error;
+      }
+    },
+
+    getDoublesRankings: async (
+      rankingId: string,
+      limit: number = 100,
+    ): Promise<PlayerRanking[]> => {
+      try {
+        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+          `/rankings/doubles/lists/${rankingId}`,
+          {params: {limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch doubles rankings for list ${rankingId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    getLatestDoublesRankings: async (
+      divisionType: string = 'DIV1',
+      gender: string = 'M',
+      limit: number = 25,
+    ): Promise<PlayerRanking[]> => {
+      try {
+        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+          '/rankings/doubles/latest',
+          {params: {division_type: divisionType, gender: gender, limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch latest doubles rankings:', error);
+        throw error;
+      }
+    },
+
+    getPlayerDoublesHistory: async (
+      playerId: string,
+      limit: number = 10,
+    ): Promise<any> => {
+      try {
+        const response: AxiosResponse<any> = await apiClient.get(
+          `/rankings/doubles/players/${playerId}/history`,
+          {params: {limit}},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch doubles ranking history for player ${playerId}:`,
+          error,
+        );
         throw error;
       }
     },
