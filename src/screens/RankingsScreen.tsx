@@ -17,6 +17,8 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
+import {useNavigation} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
 
 // Define the types
 interface RankingList {
@@ -54,11 +56,36 @@ interface PlayerRanking {
   conference?: string;
 }
 
+interface DoublesRanking {
+  team_id: string;
+  player1_id: string;
+  player2_id: string;
+  ranking_list_id: string;
+  rank: number;
+  points: number;
+  wins: number;
+  losses: number;
+  player1_name: string;
+  player2_name: string;
+  team_name: string;
+  conference?: string;
+}
+
+type RootStackParamList = {
+  MainTabs: undefined;
+  TeamDetail: {teamId: string};
+  PlayerDetail: {playerId: string};
+  MatchDetail: {matchId: string};
+};
+
+type RankingsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+
 type MatchFormatType = 'TEAM' | 'SINGLES' | 'DOUBLES';
 type GenderType = 'M' | 'F';
 
 const RankingsScreen: React.FC = () => {
   const {isDark} = useContext(ThemeContext);
+  const navigation = useNavigation<RankingsScreenNavigationProp>();
 
   // State variables
   const [matchFormat, setMatchFormat] = useState<MatchFormatType>('TEAM');
@@ -74,10 +101,11 @@ const RankingsScreen: React.FC = () => {
   const [datePickerVisible, setDatePickerVisible] = useState<boolean>(false);
   const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
   const [playerRankings, setPlayerRankings] = useState<PlayerRanking[]>([]);
+  const [doublesRankings, setDoublesRankings] = useState<DoublesRanking[]>([]);
 
   // Format a ranking list date for display in the selector
   const formatRankingListDate = (rankingList: RankingList | null): string => {
-    console.log(rankingList);
+    // console.log(rankingList);
     if (!rankingList) return 'Latest';
     if (rankingList.planned_publish_date) {
       try {
@@ -110,6 +138,7 @@ const RankingsScreen: React.FC = () => {
         lists = await api.rankings.getSinglesRankingLists(divisionType, gender);
       } else if (matchFormat === 'DOUBLES') {
         lists = await api.rankings.getDoublesRankingLists(divisionType, gender);
+        console.log(lists);
       }
 
       setRankingLists(lists);
@@ -143,11 +172,20 @@ const RankingsScreen: React.FC = () => {
       if (matchFormat === 'TEAM') {
         const data = await api.rankings.getTeamRankings(rankingListId);
         setTeamRankings(data);
-        setPlayerRankings([]); // Clear the other type
-      } else if (matchFormat === 'SINGLES' || matchFormat === 'DOUBLES') {
+        setPlayerRankings([]);
+        setDoublesRankings([]);
+      } else if (matchFormat === 'SINGLES') {
         const data = await api.rankings.getSinglesRankings(rankingListId);
         setPlayerRankings(data);
-        setTeamRankings([]); // Clear the other type
+        setTeamRankings([]);
+        setDoublesRankings([]);
+      } else if (matchFormat === 'DOUBLES') {
+        console.log(rankingListId);
+        const data: any = await api.rankings.getDoublesRankings(rankingListId);
+        console.log(data);
+        setDoublesRankings(data);
+        setTeamRankings([]);
+        setPlayerRankings([]);
       }
 
       setError(null);
@@ -156,6 +194,7 @@ const RankingsScreen: React.FC = () => {
       setError('Failed to load rankings');
       setTeamRankings([]);
       setPlayerRankings([]);
+      setDoublesRankings([]);
     } finally {
       setLoading(false);
     }
@@ -189,9 +228,24 @@ const RankingsScreen: React.FC = () => {
     await fetchRankings(rankingList.id);
   };
 
+  // Helper function to parse team names (remove gender markers)
+  const parseTeamName = (teamName: string): string => {
+    if (!teamName) return '';
+    // Remove gender designation like "(M)" or "(W)" from the end
+    return teamName.replace(/\s*\([MW]\)\s*$/, '');
+  };
+
+  const handleTeamPress = (teamId: string) => {
+    navigation.navigate('TeamDetail', {teamId});
+  };
+
+  const handlePlayerPress = (playerId: string) => {
+    navigation.navigate('PlayerDetail', {playerId});
+  };
+
   // Render a team ranking item
   const renderTeamRankingItem = ({item}: {item: TeamRanking}) => (
-    <View
+    <TouchableOpacity
       style={[
         styles.rankingRow,
         {
@@ -202,7 +256,9 @@ const RankingsScreen: React.FC = () => {
             ? theme.colors.border.dark
             : theme.colors.border.light,
         },
-      ]}>
+      ]}
+      activeOpacity={0.7}
+      onPress={() => handleTeamPress(item.team_id)}>
       {/* Rank */}
       <View style={styles.rankCell}>
         <Text
@@ -230,7 +286,7 @@ const RankingsScreen: React.FC = () => {
               },
             ]}
             numberOfLines={1}>
-            {item.team_name}
+            {parseTeamName(item.team_name)}
           </Text>
           {item.conference && (
             <Text
@@ -274,12 +330,12 @@ const RankingsScreen: React.FC = () => {
           {item.points.toFixed(2)}
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   // Render a player ranking item
   const renderPlayerRankingItem = ({item}: {item: PlayerRanking}) => (
-    <View
+    <TouchableOpacity
       style={[
         styles.rankingRow,
         {
@@ -290,7 +346,9 @@ const RankingsScreen: React.FC = () => {
             ? theme.colors.border.dark
             : theme.colors.border.light,
         },
-      ]}>
+      ]}
+      activeOpacity={0.7}
+      onPress={() => handlePlayerPress(item.player_id)}>
       {/* Rank */}
       <View style={styles.rankCell}>
         <Text
@@ -330,7 +388,107 @@ const RankingsScreen: React.FC = () => {
               },
             ]}
             numberOfLines={1}>
-            {item.team_name}
+            {parseTeamName(item.team_name)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Record */}
+      <View style={styles.recordCell}>
+        <Text
+          style={[
+            styles.recordText,
+            {
+              color: isDark ? theme.colors.text.dark : theme.colors.text.light,
+            },
+          ]}>
+          {item.wins}-{item.losses}
+        </Text>
+      </View>
+
+      {/* Points */}
+      <View style={styles.pointsCell}>
+        <Text
+          style={[
+            styles.pointsText,
+            {
+              color: isDark ? theme.colors.text.dark : theme.colors.text.light,
+            },
+          ]}>
+          {item.points.toFixed(2)}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Add a render function for doubles rankings
+  const renderDoublesRankingItem = ({item}: {item: DoublesRanking}) => (
+    <View
+      style={[
+        styles.rankingRow,
+        styles.doublesRankingRow,
+        {
+          backgroundColor: isDark
+            ? theme.colors.background.dark
+            : theme.colors.white,
+          borderColor: isDark
+            ? theme.colors.border.dark
+            : theme.colors.border.light,
+        },
+      ]}>
+      {/* Rank */}
+      <View style={styles.rankCell}>
+        <Text
+          style={[
+            styles.rankText,
+            {
+              color: isDark ? theme.colors.text.dark : theme.colors.text.light,
+            },
+          ]}>
+          {item.rank}
+        </Text>
+      </View>
+
+      {/* Players & Team Info */}
+      <View style={styles.teamCell}>
+        <TeamLogo teamId={item.team_id} size="small" />
+        <View style={styles.teamInfo}>
+          <Text
+            style={[
+              styles.teamName,
+              {
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+            ]}
+            numberOfLines={1}>
+            {item.player1_name}
+          </Text>
+          <Text
+            style={[
+              styles.teamName,
+              styles.secondPlayerName,
+              {
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+            ]}
+            numberOfLines={1}>
+            {item.player2_name}
+          </Text>
+          <Text
+            style={[
+              styles.conferenceText,
+              {
+                color: isDark
+                  ? theme.colors.text.dimDark
+                  : theme.colors.gray[500],
+              },
+            ]}
+            numberOfLines={1}>
+            {parseTeamName(item.team_name)}
           </Text>
         </View>
       </View>
@@ -374,18 +532,20 @@ const RankingsScreen: React.FC = () => {
               : theme.colors.background.light,
           },
         ]}>
-        <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-        <Text
-          style={[
-            styles.loadingText,
-            {
-              color: isDark
-                ? theme.colors.text.dimDark
-                : theme.colors.gray[600],
-            },
-          ]}>
-          Loading rankings...
-        </Text>
+        <View style={[styles.loadingView]}>
+          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <Text
+            style={[
+              styles.loadingText,
+              {
+                color: isDark
+                  ? theme.colors.text.dimDark
+                  : theme.colors.gray[600],
+              },
+            ]}>
+            Loading rankings...
+          </Text>
+        </View>
       </View>
     );
   }
@@ -723,7 +883,111 @@ const RankingsScreen: React.FC = () => {
             }}
           />
         )
-      ) : playerRankings.length === 0 ? (
+      ) : matchFormat === 'SINGLES' ? (
+        playerRankings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Icon
+              name="award"
+              size={48}
+              color={
+                isDark ? theme.colors.text.dimDark : theme.colors.gray[400]
+              }
+            />
+            <Text
+              style={[
+                styles.emptyText,
+                {
+                  color: isDark
+                    ? theme.colors.text.dimDark
+                    : theme.colors.gray[600],
+                },
+              ]}>
+              No singles rankings available
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={playerRankings}
+            keyExtractor={(item, index) => `${item.ranking_list_id}-${index}`}
+            renderItem={renderPlayerRankingItem}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={[theme.colors.primary[500]]}
+                tintColor={theme.colors.primary[500]}
+              />
+            }
+            ListHeaderComponent={
+              <View
+                style={[
+                  styles.listHeader,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.card.dark
+                      : theme.colors.card.light,
+                  },
+                ]}>
+                <View style={styles.rankHeaderCell}>
+                  <Text
+                    style={[
+                      styles.columnHeaderText,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[600],
+                      },
+                    ]}>
+                    Rank
+                  </Text>
+                </View>
+                <View style={styles.teamHeaderCell}>
+                  <Text
+                    style={[
+                      styles.columnHeaderText,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[600],
+                      },
+                    ]}>
+                    Player/Team
+                  </Text>
+                </View>
+                <View style={styles.recordHeaderCell}>
+                  <Text
+                    style={[
+                      styles.columnHeaderText,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[600],
+                      },
+                    ]}>
+                    W-L
+                  </Text>
+                </View>
+                <View style={styles.pointsHeaderCell}>
+                  <Text
+                    style={[
+                      styles.columnHeaderText,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dimDark
+                          : theme.colors.gray[600],
+                      },
+                    ]}>
+                    Pts
+                  </Text>
+                </View>
+              </View>
+            }
+            contentContainerStyle={{
+              paddingBottom: 120, // Extra padding at bottom
+            }}
+          />
+        )
+      ) : doublesRankings.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Icon
             name="award"
@@ -739,14 +1003,14 @@ const RankingsScreen: React.FC = () => {
                   : theme.colors.gray[600],
               },
             ]}>
-            No player rankings available
+            No doubles rankings available
           </Text>
         </View>
       ) : (
         <FlatList
-          data={playerRankings}
+          data={doublesRankings}
           keyExtractor={(item, index) => `${item.ranking_list_id}-${index}`}
-          renderItem={renderPlayerRankingItem}
+          renderItem={renderDoublesRankingItem}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -788,7 +1052,7 @@ const RankingsScreen: React.FC = () => {
                         : theme.colors.gray[600],
                     },
                   ]}>
-                  Player/Team
+                  Players/Team
                 </Text>
               </View>
               <View style={styles.recordHeaderCell}>
@@ -905,6 +1169,11 @@ const RankingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     paddingHorizontal: theme.spacing[4],
@@ -1114,6 +1383,15 @@ const styles = StyleSheet.create({
   },
   datePickerItemText: {
     fontSize: theme.typography.fontSize.base,
+  },
+  doublesRankingRow: {
+    paddingVertical: theme.spacing[4], // Increased padding
+    minHeight: 90, // Increased minimum height to accommodate two name lines
+  },
+  secondPlayerName: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '600',
+    marginTop: 2, // Small gap between player names
   },
 });
 

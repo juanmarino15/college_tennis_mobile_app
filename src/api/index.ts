@@ -171,6 +171,21 @@ export interface PlayerRanking {
   conference?: string;
 }
 
+export interface DoublesRanking {
+  team_id: string;
+  player1_id: string;
+  player2_id: string;
+  ranking_list_id: string;
+  rank: number;
+  points: number;
+  wins: number;
+  losses: number;
+  player1_name: string;
+  player2_name: string;
+  team_name: string;
+  conference?: string;
+}
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -660,9 +675,9 @@ export const api = {
     getDoublesRankings: async (
       rankingId: string,
       limit: number = 100,
-    ): Promise<PlayerRanking[]> => {
+    ): Promise<DoublesRanking[]> => {
       try {
-        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+        const response: AxiosResponse<DoublesRanking[]> = await apiClient.get(
           `/rankings/doubles/lists/${rankingId}`,
           {params: {limit}},
         );
@@ -680,9 +695,9 @@ export const api = {
       divisionType: string = 'DIV1',
       gender: string = 'M',
       limit: number = 25,
-    ): Promise<PlayerRanking[]> => {
+    ): Promise<DoublesRanking[]> => {
       try {
-        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+        const response: AxiosResponse<DoublesRanking[]> = await apiClient.get(
           '/rankings/doubles/latest',
           {params: {division_type: divisionType, gender: gender, limit}},
         );
