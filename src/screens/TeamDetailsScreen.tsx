@@ -88,6 +88,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
   const [matchSortOrder, setMatchSortOrder] = useState('newest'); // 'newest' or 'oldest'
+  const [teamRanking, setTeamRanking] = useState<any>(null);
 
   // Handle season selection
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -108,6 +109,17 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
       // Fetch team data
       const teamData = await api.teams.getById(teamId);
+
+      try {
+        const rankingHistory = await api.rankings.getTeamRankingHistory(teamId);
+        console.log(rankingHistory);
+        if (rankingHistory && rankingHistory.length > 0) {
+          // Get the most recent ranking
+          setTeamRanking(rankingHistory[0]);
+        }
+      } catch (rankingErr) {
+        console.error('Error fetching team ranking:', rankingErr);
+      }
 
       // Clean the team name from gender markers
       if (teamData && teamData.name) {
@@ -379,6 +391,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                   : theme.colors.text.light,
               },
             ]}>
+            {teamRanking ? `#${teamRanking.rank} ` : ''}
             {team.name}
           </Text>
           {team.conference && (
@@ -652,6 +665,84 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
               </Text>
             </View>
           </View>
+
+          {/* ADD THE RANKING ROW RIGHT HERE
+          {teamRanking && (
+            <View style={styles.statsRow}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.background.dark
+                      : theme.colors.gray[50],
+                    borderColor: isDark
+                      ? theme.colors.border.dark
+                      : theme.colors.border.light,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.statValue,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dark
+                        : theme.colors.text.light,
+                    },
+                  ]}>
+                  #{teamRanking.rank}
+                </Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[500],
+                    },
+                  ]}>
+                  Ranking
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.background.dark
+                      : theme.colors.gray[50],
+                    borderColor: isDark
+                      ? theme.colors.border.dark
+                      : theme.colors.border.light,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.statValue,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dark
+                        : theme.colors.text.light,
+                    },
+                  ]}>
+                  {teamRanking.publish_date
+                    ? format(new Date(teamRanking.publish_date), 'MMM d')
+                    : 'Latest'}
+                </Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[500],
+                    },
+                  ]}>
+                  Updated
+                </Text>
+              </View>
+            </View>
+          )} */}
         </View>
       )}
     </View>
@@ -922,22 +1013,22 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
             // Console log the time data for debugging
             // Console log the time data for debugging
-            console.log(`Match ID: ${match.id}`);
-            console.log(`Raw start_date: ${match.start_date}`);
-            console.log(`Raw scheduled_time: ${match.scheduled_time}`);
-            console.log(`Timezone: ${match.timezone}`);
-            console.log(
-              `Formatted time: ${
-                match.scheduled_time && match.timezone
-                  ? formatTimeWithTimezone(match.scheduled_time, match.timezone)
-                  : 'TBA'
-              }`,
-            );
-            console.log(
-              `Timezone abbreviation: ${
-                match.timezone ? getTimezoneAbbr(match.timezone) : 'N/A'
-              }`,
-            );
+            // console.log(`Match ID: ${match.id}`);
+            // console.log(`Raw start_date: ${match.start_date}`);
+            // console.log(`Raw scheduled_time: ${match.scheduled_time}`);
+            // console.log(`Timezone: ${match.timezone}`);
+            // console.log(
+            //   `Formatted time: ${
+            //     match.scheduled_time && match.timezone
+            //       ? formatTimeWithTimezone(match.scheduled_time, match.timezone)
+            //       : 'TBA'
+            //   }`,
+            // );
+            // console.log(
+            //   `Timezone abbreviation: ${
+            //     match.timezone ? getTimezoneAbbr(match.timezone) : 'N/A'
+            //   }`,
+            // );
 
             // Declare variables for result display
             let teamWon = false;

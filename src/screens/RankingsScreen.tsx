@@ -105,24 +105,20 @@ const RankingsScreen: React.FC = () => {
 
   // Format a ranking list date for display in the selector
   const formatRankingListDate = (rankingList: RankingList | null): string => {
-    // console.log(rankingList);
     if (!rankingList) return 'Latest';
+
+    // Simply return the planned_publish_date directly from the database
     if (rankingList.planned_publish_date) {
-      try {
-        const date = new Date(rankingList.planned_publish_date);
-        if (date.getFullYear() > 1970) {
-          return format(date, 'MMM d, yyyy');
-        }
-      } catch (e) {}
+      return rankingList.planned_publish_date;
     }
+
+    // If no planned_publish_date, extract only the date part from publish_date
     if (rankingList.publish_date) {
-      try {
-        const date = new Date(rankingList.publish_date);
-        if (date.getFullYear() > 1970) {
-          return format(date, 'MMM d, yyyy');
-        }
-      } catch (e) {}
+      // Extract only the date portion (YYYY-MM-DD) from the publish_date
+      const publishDateParts = rankingList.publish_date.split('T')[0];
+      return publishDateParts;
     }
+
     return 'Unknown date';
   };
 

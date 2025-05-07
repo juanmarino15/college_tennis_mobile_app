@@ -1,235 +1,239 @@
-// src/screens/HomeScreen.tsx
-import React, {useState, useEffect} from 'react';
+// src/pages/HomePage.tsx
+import React, {useState, useEffect, useContext} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
+  RefreshControl,
+  StatusBar,
   SafeAreaView,
+  Alert,
 } from 'react-native';
-import {format} from 'date-fns';
-import {api} from '../api';
+import {ThemeContext} from '../../App';
 import theme from '../theme';
-import {Match, Team} from '../api';
-import {StackNavigationProp} from '@react-navigation/stack';
+import {PreferencesManager} from '../utils/preferencesManager';
+import Onboarding from '../components/Onboarding';
+import FavoriteTeamsDashboard from '../components/FavoriteTeamDashboard';
+import FavoritePlayersSection from '../components/FavoritePlayerSection';
+import BigMatchesSection from '../components/BigMatchesSection';
+import TennisNewsFeed from '../components/TennisNewsFeed';
 
-// Define navigation types
-type RootStackParamList = {
-  MainTabs: undefined;
-  MatchDetail: {matchId: string};
-  TeamDetail: {teamId: string};
-  PlayerDetail: {playerId: string};
-};
+const HomeScreen = () => {
+  const {isDark} = useContext(ThemeContext);
+  const [refreshing, setRefreshing] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [userPreferences, setUserPreferences] = useState({
+    favoriteTeams: [],
+    favoritePlayers: [],
+    preferredDivision: 'DIV1',
+    preferredGender: 'M',
+  });
 
-type HomeScreenNavigationProp = StackNavigationProp<
-  RootStackParamList,
-  'MainTabs'
->;
-
-interface HomeScreenProps {
-  navigation: HomeScreenNavigationProp;
-}
-
-const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
-  const [todayMatches, setTodayMatches] = useState<Match[]>([]);
-  const [teams, setTeams] = useState<Record<string, Team>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  // Load user preferences when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Get today's date in YYYY-MM-DD format
-        const today = format(new Date(), 'yyyy-MM-dd');
-
-        // Fetch today's matches
-        const matchesData = await api.matches.getAll(today);
-
-        // Get unique team IDs from matches
-        const teamIds = new Set<string>();
-        matchesData.forEach(match => {
-          if (match.home_team_id) teamIds.add(match.home_team_id);
-          if (match.away_team_id) teamIds.add(match.away_team_id);
-        });
-
-        // Fetch team data for each team
-        const teamsData: Record<string, Team> = {};
-        await Promise.all(
-          Array.from(teamIds).map(async teamId => {
-            try {
-              const team = await api.teams.getById(teamId);
-              teamsData[teamId] = team;
-            } catch (error) {
-              console.error(`Failed to fetch team ${teamId}:`, error);
-            }
-          }),
-        );
-
-        setTodayMatches(matchesData);
-        setTeams(teamsData);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching home data:', err);
-        setError('Failed to load matches. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    loadUserPreferences();
   }, []);
 
+  // Load preferences from storage
+  const loadUserPreferences = async () => {
+    try {
+      const prefs = await PreferencesManager.initialize();
+      console.log('HomeScreen loaded preferences:', prefs);
+
+      if (prefs) {
+        setUserPreferences({
+          favoriteTeams: prefs.favoriteTeams || [],
+          favoritePlayers: prefs.favoritePlayers || [],
+          preferredDivision: prefs.preferredDivision || 'DIV1',
+          preferredGender: prefs.preferredGender || 'M',
+        });
+        setOnboardingCompleted(prefs.onboardingCompleted || false);
+      }
+    } catch (error) {
+      console.error('Failed to load preferences:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load your preferences. Please restart the app.',
+      );
+    }
+  };
+
+  // Handle completing onboarding
+  const handleOnboardingComplete = async (preferences: any) => {
+    try {
+      console.log(
+        'HomeScreen handling onboarding completion with:',
+        preferences,
+      );
+
+      // Make sure to preserve any existing preferences
+      const currentPrefs = (await PreferencesManager.getPreferences()) || {};
+
+      const updatedPrefs = {
+        ...currentPrefs,
+        favoriteTeams: preferences.favoriteTeams || [],
+        favoritePlayers: preferences.favoritePlayers || [],
+        preferredDivision: preferences.preferredDivision || 'DIV1',
+        preferredGender: preferences.preferredGender || 'M',
+        onboardingCompleted: true,
+      };
+
+      console.log('Saving updated preferences:', updatedPrefs);
+      await PreferencesManager.savePreferences(updatedPrefs);
+
+      // Update local state
+      setUserPreferences({
+        favoriteTeams: updatedPrefs.favoriteTeams || [],
+        favoritePlayers: updatedPrefs.favoritePlayers || [],
+        preferredDivision: updatedPrefs.preferredDivision || 'DIV1',
+        preferredGender: updatedPrefs.preferredGender || 'M',
+      });
+      setOnboardingCompleted(true);
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
+      Alert.alert(
+        'Error',
+        'Failed to save your preferences. Please try again.',
+      );
+    }
+  };
+
+  // Handle refreshing the page
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadUserPreferences();
+    setRefreshing(false);
+  };
+
+  // If onboarding not completed, show onboarding screen
+  if (!onboardingCompleted) {
+    return <Onboarding onComplete={handleOnboardingComplete} isDark={isDark} />;
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>College Tennis</Text>
-        <Text style={styles.date}>
-          {format(new Date(), 'EEEE, MMMM d, yyyy')}
-        </Text>
+    <SafeAreaView style={{flex: 1}}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={
+          isDark ? theme.colors.background.dark : theme.colors.background.light
+        }
+      />
+      <ScrollView
+        style={[
+          styles.container,
+          {
+            backgroundColor: isDark
+              ? theme.colors.background.dark
+              : theme.colors.background.light,
+          },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary[500]]}
+            tintColor={theme.colors.primary[500]}
+          />
+        }>
+        {/* Welcome Header */}
+        <View style={styles.welcomeContainer}>
+          <Text
+            style={[
+              styles.welcomeText,
+              {
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+            ]}>
+            College Tennis
+          </Text>
+          <Text
+            style={[
+              styles.dateText,
+              {
+                color: isDark
+                  ? theme.colors.text.dimDark
+                  : theme.colors.gray[500],
+              },
+            ]}>
+            {new Date().toLocaleDateString(undefined, {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </Text>
+        </View>
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-            <Text style={styles.loadingText}>Loading matches...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : todayMatches.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No matches scheduled for today</Text>
-          </View>
-        ) : (
-          <View style={styles.matchesContainer}>
-            <Text style={styles.sectionTitle}>Today's Matches</Text>
-            {todayMatches.map(match => (
-              <View key={match.id} style={styles.matchCard}>
-                <View style={styles.matchTeams}>
-                  <Text style={styles.teamName}>
-                    {teams[match.home_team_id || '']?.name || 'Team A'}
-                  </Text>
-                  <Text style={styles.vs}>vs</Text>
-                  <Text style={styles.teamName}>
-                    {teams[match.away_team_id || '']?.name || 'Team B'}
-                  </Text>
-                </View>
+        {/* Debug Info - remove in production */}
+        <View style={styles.debugContainer}>
+          <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
+            Teams: {userPreferences.favoriteTeams.length}
+          </Text>
+          <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
+            Players: {userPreferences.favoritePlayers.length}
+          </Text>
+        </View>
 
-                {match.scheduled_time && (
-                  <Text style={styles.matchTime}>
-                    {format(new Date(match.scheduled_time), 'h:mm a')}
-                  </Text>
-                )}
+        {/* Favorite Teams Dashboard */}
+        <FavoriteTeamsDashboard
+          favoriteTeams={userPreferences.favoriteTeams}
+          isDark={isDark}
+        />
 
-                {match.is_conference_match && (
-                  <View style={styles.conferenceTag}>
-                    <Text style={styles.conferenceText}>Conference</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
+        {/* Big Upcoming Matches */}
+        <BigMatchesSection
+          favoriteTeams={userPreferences.favoriteTeams}
+          isDark={isDark}
+        />
+
+        {/* Favorite Players */}
+        <FavoritePlayersSection
+          favoritePlayers={userPreferences.favoritePlayers}
+          isDark={isDark}
+        />
+
+        {/* Tennis News */}
+        <TennisNewsFeed
+          preferredDivision={userPreferences.preferredDivision}
+          preferredGender={userPreferences.preferredGender}
+          isDark={isDark}
+        />
+
+        {/* Extra space at bottom */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background.light,
-  },
   container: {
-    padding: theme.spacing[4],
-  },
-  title: {
-    fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: 'bold',
-    color: theme.colors.text.light,
-  },
-  date: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.gray[500],
-    marginTop: theme.spacing[1],
-    marginBottom: theme.spacing[6],
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    marginTop: theme.spacing[10],
-  },
-  loadingText: {
-    marginTop: theme.spacing[4],
-    color: theme.colors.gray[600],
-  },
-  errorContainer: {
-    alignItems: 'center',
-    marginTop: theme.spacing[10],
-  },
-  errorText: {
-    color: theme.colors.error,
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: theme.spacing[10],
-  },
-  emptyText: {
-    color: theme.colors.gray[600],
-    textAlign: 'center',
-  },
-  matchesContainer: {
-    marginTop: theme.spacing[4],
-  },
-  sectionTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
-    color: theme.colors.text.light,
-    marginBottom: theme.spacing[4],
-  },
-  matchCard: {
-    backgroundColor: theme.colors.card.light,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing[4],
-    marginBottom: theme.spacing[3],
-    ...theme.shadows.md,
-  },
-  matchTeams: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  teamName: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: '500',
-    color: theme.colors.text.light,
     flex: 1,
   },
-  vs: {
+  welcomeContainer: {
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[4],
+    paddingBottom: theme.spacing[2],
+  },
+  welcomeText: {
+    fontSize: theme.typography.fontSize['3xl'],
+    fontWeight: 'bold',
+  },
+  dateText: {
     fontSize: theme.typography.fontSize.base,
-    color: theme.colors.gray[500],
-    marginHorizontal: theme.spacing[2],
+    marginTop: theme.spacing[1],
   },
-  matchTime: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
-    marginTop: theme.spacing[2],
+  debugContainer: {
+    padding: 8,
+    margin: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 4,
   },
-  conferenceTag: {
-    position: 'absolute',
-    top: theme.spacing[2],
-    right: theme.spacing[2],
-    backgroundColor: theme.colors.primary[100],
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[0.5],
-    borderRadius: theme.borderRadius.full,
-  },
-  conferenceText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.primary[700],
+  bottomPadding: {
+    height: 80, // Extra padding for bottom navigation
   },
 });
 

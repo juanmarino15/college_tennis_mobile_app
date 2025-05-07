@@ -4,8 +4,8 @@ import type {AxiosResponse} from 'axios';
 import {Alert} from 'react-native';
 
 // Base URL should come from environment config
-const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
-// const BASE_URL = 'http://localhost:8000/api/v1';
+// const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
+const BASE_URL = 'http://localhost:8000/api/v1';
 
 // API response interfaces
 export interface Team {
@@ -120,6 +120,25 @@ export interface PlayerMatchResult {
   opponent_name1: string;
   opponent_name2?: string;
 }
+// Add this to your types section in api.ts
+export interface PlayerSearchResult {
+  person_id: string;
+  tennis_id?: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+  team_id?: string;
+  team_name?: string;
+  gender?: string;
+  conference?: string;
+  division?: string;
+  season_name?: string;
+  season_id?: string;
+  school_name?: string;
+  school_id?: string;
+  wtn_singles?: number;
+  wtn_doubles?: number;
+}
 export interface PlayerWTN {
   person_id: string;
   tennis_id: string;
@@ -189,7 +208,7 @@ export interface DoublesRanking {
 // Create axios instance
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 50000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -447,6 +466,26 @@ export const api = {
         return response.data;
       } catch (error) {
         console.error(`Failed to fetch WTN for player ${id}:`, error);
+        throw error;
+      }
+    },
+    search: async (
+      query?: string,
+      gender?: string,
+      season?: string,
+    ): Promise<PlayerSearchResult[]> => {
+      try {
+        // Build query parameters
+        const params: any = {};
+        if (query) params.query = query;
+        if (gender) params.gender = gender;
+        if (season) params.season_name = season;
+
+        const response: AxiosResponse<PlayerSearchResult[]> =
+          await apiClient.get('/players/search', {params});
+        return response.data;
+      } catch (error) {
+        console.error('Failed to search players:', error);
         throw error;
       }
     },

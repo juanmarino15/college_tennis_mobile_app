@@ -65,6 +65,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
       // Fetch match data
       const matchData = await api.matches.getById(matchId);
+      console.log(matchData);
 
       // Log match data for debugging
       console.log('Match Data:', {
@@ -89,6 +90,11 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
           ? api.matches.getScore(matchId)
           : Promise.resolve(null),
       ]);
+
+      console.log(homeTeam);
+      console.log(awayTeam);
+      console.log(lineupData);
+      console.log(scoreData);
 
       // Get unique player IDs from lineup
       const playerIds = new Set<string>();
@@ -176,6 +182,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
     .filter(match => match.match_type === 'DOUBLES')
     .sort((a, b) => a.position - b.position);
 
+  console.log(doublesMatches);
+
   const singlesMatches = lineup
     .filter(match => match.match_type === 'SINGLES')
     .sort((a, b) => a.position - b.position);
@@ -192,7 +200,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
     const sets = cleanedScore.split(' ').filter(set => set.includes('-'));
 
     return sets.map(set => {
-      console.log('Processing set:', set);
+      // console.log('Processing set:', set);
 
       // Check if this set has a tiebreak
       const hasTiebreak = set.includes('(');
@@ -231,13 +239,13 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
         }
       }
 
-      console.log('Parsed set:', {
-        score1,
-        score2,
-        tiebreak,
-        tiebreakBelongsToScore1,
-        tiebreakBelongsToScore2,
-      });
+      // console.log('Parsed set:', {
+      //   score1,
+      //   score2,
+      //   tiebreak,
+      //   tiebreakBelongsToScore1,
+      //   tiebreakBelongsToScore2,
+      // });
 
       return {
         score1: score1 || '0',
