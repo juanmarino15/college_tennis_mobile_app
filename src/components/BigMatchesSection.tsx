@@ -9,16 +9,54 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/Feather';
 import {api} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
 
-const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
-  const navigation = useNavigation();
+// Define proper types for component props
+interface BigMatchesSectionProps {
+  favoriteTeams?: string[];
+  isDark: boolean;
+}
+
+// Define interface for matches with proper null/undefined handling
+interface Match {
+  id: string;
+  home_team_id?: string | null;
+  away_team_id?: string | null;
+  start_date: string;
+  timezone?: string;
+  scheduled_time?: string;
+  no_scheduled_time?: boolean;
+  completed: boolean;
+  is_conference_match?: boolean;
+  gender?: string;
+  score?: number;
+  involvesFavorite?: boolean | string;
+  // Add any other properties that might be in your API response
+}
+
+// Define proper types for navigation
+type RootStackParamList = {
+  MainTabs: undefined;
+  TeamDetail: {teamId: string};
+  MatchDetail: {matchId: string};
+  TeamsPage: undefined;
+};
+
+type BigMatchesNavigationProp =
+  import('@react-navigation/stack').StackNavigationProp<RootStackParamList>;
+
+const BigMatchesSection: React.FC<BigMatchesSectionProps> = ({
+  favoriteTeams = [],
+  isDark,
+}) => {
+  const navigation = useNavigation<BigMatchesNavigationProp>();
   const [loading, setLoading] = useState(true);
-  const [upcomingMatches, setUpcomingMatches] = useState([]);
-  const [teamRankings, setTeamRankings] = useState({});
+  const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
+  const [teamRankings, setTeamRankings] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchBigMatches = async () => {
@@ -42,7 +80,7 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
         });
 
         // Fetch all team IDs from these matches
-        const teamIds = new Set();
+        const teamIds = new Set<string>();
         upcoming.forEach(match => {
           if (match.home_team_id) teamIds.add(match.home_team_id);
           if (match.away_team_id) teamIds.add(match.away_team_id);
@@ -54,7 +92,7 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
           'M',
           100,
         );
-        const menRankingsMap = {};
+        const menRankingsMap: Record<string, number> = {};
         latestRankings.forEach(rank => {
           menRankingsMap[rank.team_id] = rank.rank;
         });
@@ -64,7 +102,7 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
           'F',
           100,
         );
-        const womenRankingsMap = {};
+        const womenRankingsMap: Record<string, number> = {};
         latestWomenRankings.forEach(rank => {
           womenRankingsMap[rank.team_id] = rank.rank;
         });
@@ -75,13 +113,18 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
 
         // Score matches by ranking significance
         const scoredMatches = upcoming.map(match => {
-          const homeRank = rankingsMap[match.home_team_id] || 9999;
-          const awayRank = rankingsMap[match.away_team_id] || 9999;
+          const homeRank = match.home_team_id
+            ? rankingsMap[match.home_team_id] || 9999
+            : 9999;
+          const awayRank = match.away_team_id
+            ? rankingsMap[match.away_team_id] || 9999
+            : 9999;
 
           // Determine if match involves favorite teams
           const involvesFavorite =
-            favoriteTeams.includes(match.home_team_id) ||
-            favoriteTeams.includes(match.away_team_id);
+            (match.home_team_id &&
+              favoriteTeams.includes(match.home_team_id)) ||
+            (match.away_team_id && favoriteTeams.includes(match.away_team_id));
 
           // Score based on rankings and favorite status
           // Lower is better: Top 10 vs Top 10 is high priority
@@ -102,14 +145,16 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
             score -= 50;
           }
 
-          return {...match, score, involvesFavorite};
+          return {...match, score, involvesFavorite} as Match;
         });
 
         // Sort by score (lowest first - most significant)
-        scoredMatches.sort((a, b) => a.score - b.score);
+        scoredMatches.sort(
+          (a, b) => ((a.score as number) || 0) - ((b.score as number) || 0),
+        );
 
         // Take top 5 big matches
-        setUpcomingMatches(scoredMatches.slice(0, 5));
+        setUpcomingMatches(scoredMatches.slice(0, 5) as Match[]);
       } catch (error) {
         console.error('Failed to fetch big matches:', error);
       } finally {
@@ -121,7 +166,7 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
   }, [favoriteTeams]);
 
   // Navigate to match details
-  const navigateToMatch = matchId => {
+  const navigateToMatch = (matchId: string) => {
     navigation.navigate('MatchDetail', {matchId});
   };
 
@@ -160,10 +205,22 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.matchesScroll}>
         {upcomingMatches.map(match => {
-          const homeRank = teamRankings[match.home_team_id];
-          const awayRank = teamRankings[match.away_team_id];
-          const isHomeFavorite = favoriteTeams.includes(match.home_team_id);
-          const isAwayFavorite = favoriteTeams.includes(match.away_team_id);
+          const homeRank =
+            match.home_team_id && typeof match.home_team_id === 'string'
+              ? teamRankings[match.home_team_id]
+              : undefined;
+          const awayRank =
+            match.away_team_id && typeof match.away_team_id === 'string'
+              ? teamRankings[match.away_team_id]
+              : undefined;
+          const isHomeFavorite =
+            match.home_team_id && typeof match.home_team_id === 'string'
+              ? favoriteTeams.includes(match.home_team_id)
+              : false;
+          const isAwayFavorite =
+            match.away_team_id && typeof match.away_team_id === 'string'
+              ? favoriteTeams.includes(match.away_team_id)
+              : false;
 
           return (
             <TouchableOpacity
@@ -224,7 +281,7 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
                     styles.teamContainer,
                     isHomeFavorite && styles.favoriteTeam,
                   ]}>
-                  <TeamLogo teamId={match.home_team_id} size="medium" />
+                  <TeamLogo teamId={match.home_team_id || ''} size="medium" />
                   {homeRank && homeRank <= 25 && (
                     <View style={styles.rankBadge}>
                       <Text style={styles.rankText}>#{homeRank}</Text>
@@ -250,7 +307,7 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
                     styles.teamContainer,
                     isAwayFavorite && styles.favoriteTeam,
                   ]}>
-                  <TeamLogo teamId={match.away_team_id} size="medium" />
+                  <TeamLogo teamId={match.away_team_id || ''} size="medium" />
                   {awayRank && awayRank <= 25 && (
                     <View style={styles.rankBadge}>
                       <Text style={styles.rankText}>#{awayRank}</Text>
@@ -270,6 +327,29 @@ const BigMatchesSection = ({favoriteTeams = [], isDark}) => {
                   <View style={styles.favoriteLabel}>
                     <Icon name="star" size={10} color="white" />
                     <Text style={styles.favoriteLabelText}>Favorite</Text>
+                  </View>
+                )}
+                {match.gender && (
+                  <View
+                    style={[
+                      styles.genderLabel,
+                      {
+                        backgroundColor: isDark
+                          ? theme.colors.gray[800]
+                          : theme.colors.gray[100],
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.genderLabelText,
+                        {
+                          color: isDark
+                            ? theme.colors.text.dark
+                            : theme.colors.text.light,
+                        },
+                      ]}>
+                      {match.gender === 'MALE' ? 'Men' : 'Women'}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -395,6 +475,20 @@ const styles = StyleSheet.create({
   },
   favoriteLabelText: {
     color: 'white',
+    fontSize: 10,
+    fontWeight: '500',
+    marginLeft: 2,
+  },
+  genderLabel: {
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[0.5],
+    marginHorizontal: theme.spacing[1],
+    marginBottom: theme.spacing[1],
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  genderLabelText: {
     fontSize: 10,
     fontWeight: '500',
     marginLeft: 2,

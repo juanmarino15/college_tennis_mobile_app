@@ -134,7 +134,6 @@ const Onboarding: React.FC<OnboardingProps> = ({onComplete, isDark}) => {
   };
 
   // Handle player selection completion
-  // Handle player selection completion
   const handlePlayerSelectionComplete = (players: string[]) => {
     console.log('Players selected:', players);
 

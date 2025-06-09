@@ -1,4 +1,4 @@
-// src/components/FavoriteTeamsDashboard.tsx
+// src/components/FavoriteTeamDashboard.tsx
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -31,6 +31,7 @@ type FavoriteTeamsDashboardNavigationProp =
 interface FavoriteTeamsDashboardProps {
   favoriteTeams: string[];
   isDark: boolean;
+  onViewAll?: () => void; // Added this prop for View All button
 }
 
 // Extend the API Match interface with our component's needs
@@ -49,9 +50,10 @@ interface TeamRanking {
   rank: number;
 }
 
-const FavoriteTeamsDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
+const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
   favoriteTeams,
   isDark,
+  onViewAll,
 }) => {
   const navigation = useNavigation<FavoriteTeamsDashboardNavigationProp>();
   const [loading, setLoading] = useState<boolean>(true);
@@ -246,7 +248,9 @@ const FavoriteTeamsDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
               styles.addButton,
               {backgroundColor: theme.colors.primary[500]},
             ]}
-            onPress={() => navigation.navigate('TeamsPage')}>
+            onPress={() =>
+              onViewAll ? onViewAll() : navigation.navigate('TeamsPage')
+            }>
             <Icon name="plus" size={16} color="white" />
             <Text style={styles.addButtonText}>Add Teams</Text>
           </TouchableOpacity>
@@ -273,7 +277,9 @@ const FavoriteTeamsDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
               styles.emptyButton,
               {backgroundColor: theme.colors.primary[500]},
             ]}
-            onPress={() => navigation.navigate('TeamsPage')}>
+            onPress={() =>
+              onViewAll ? onViewAll() : navigation.navigate('TeamsPage')
+            }>
             <Text style={styles.emptyButtonText}>Browse Teams</Text>
           </TouchableOpacity>
         </View>
@@ -291,7 +297,7 @@ const FavoriteTeamsDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
           ]}>
           Your Teams
         </Text>
-        <TouchableOpacity style={styles.viewAllButton}>
+        <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
           <Text
             style={[styles.viewAllText, {color: theme.colors.primary[500]}]}>
             View All
@@ -860,4 +866,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FavoriteTeamsDashboard;
+export default FavoriteTeamDashboard;

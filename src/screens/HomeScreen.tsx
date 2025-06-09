@@ -14,10 +14,11 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import {PreferencesManager} from '../utils/preferencesManager';
 import Onboarding from '../components/Onboarding';
-import FavoriteTeamsDashboard from '../components/FavoriteTeamDashboard';
+import FavoriteTeamDashboard from '../components/FavoriteTeamDashboard';
 import FavoritePlayersSection from '../components/FavoritePlayerSection';
 import BigMatchesSection from '../components/BigMatchesSection';
 import TennisNewsFeed from '../components/TennisNewsFeed';
+import ManageFavoritesModal from '../components/ManageFavoritesModal';
 
 const HomeScreen = () => {
   const {isDark} = useContext(ThemeContext);
@@ -29,6 +30,10 @@ const HomeScreen = () => {
     preferredDivision: 'DIV1',
     preferredGender: 'M',
   });
+
+  // State for manage favorites modal
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<'teams' | 'players'>('teams');
 
   // Load user preferences when component mounts
   useEffect(() => {
@@ -106,6 +111,25 @@ const HomeScreen = () => {
     setRefreshing(false);
   };
 
+  // Open the modal to manage favorites
+  const openManageFavorites = (mode: 'teams' | 'players') => {
+    setModalMode(mode);
+    setIsModalVisible(true);
+  };
+
+  // Handle updates to favorites
+  const handleFavoritesUpdated = (
+    type: 'teams' | 'players',
+    updatedFavorites: string[],
+  ) => {
+    // Update local state with the new favorites
+    setUserPreferences(prev => ({
+      ...prev,
+      [type === 'teams' ? 'favoriteTeams' : 'favoritePlayers']:
+        updatedFavorites,
+    }));
+  };
+
   // If onboarding not completed, show onboarding screen
   if (!onboardingCompleted) {
     return <Onboarding onComplete={handleOnboardingComplete} isDark={isDark} />;
@@ -167,19 +191,20 @@ const HomeScreen = () => {
         </View>
 
         {/* Debug Info - remove in production */}
-        <View style={styles.debugContainer}>
-          <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
-            Teams: {userPreferences.favoriteTeams.length}
-          </Text>
-          <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
-            Players: {userPreferences.favoritePlayers.length}
-          </Text>
-        </View>
+        {/* <View style={styles.debugContainer}>
+            <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
+              Teams: {userPreferences.favoriteTeams.length}
+            </Text>
+            <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
+              Players: {userPreferences.favoritePlayers.length}
+            </Text>
+          </View> */}
 
         {/* Favorite Teams Dashboard */}
-        <FavoriteTeamsDashboard
+        <FavoriteTeamDashboard
           favoriteTeams={userPreferences.favoriteTeams}
           isDark={isDark}
+          onViewAll={() => openManageFavorites('teams')}
         />
 
         {/* Big Upcoming Matches */}
@@ -192,18 +217,30 @@ const HomeScreen = () => {
         <FavoritePlayersSection
           favoritePlayers={userPreferences.favoritePlayers}
           isDark={isDark}
+          onViewAll={() => openManageFavorites('players')}
         />
 
         {/* Tennis News */}
-        <TennisNewsFeed
+        {/* <TennisNewsFeed
           preferredDivision={userPreferences.preferredDivision}
           preferredGender={userPreferences.preferredGender}
           isDark={isDark}
-        />
+        /> */}
 
         {/* Extra space at bottom */}
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Manage Favorites Modal */}
+      <ManageFavoritesModal
+        isVisible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        mode={modalMode}
+        favoriteTeams={userPreferences.favoriteTeams}
+        favoritePlayers={userPreferences.favoritePlayers}
+        onFavoritesUpdated={handleFavoritesUpdated}
+        isDark={isDark}
+      />
     </SafeAreaView>
   );
 };

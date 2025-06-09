@@ -1,4 +1,4 @@
-// src/components/FavoritePlayersSection.tsx
+// src/components/FavoritePlayerSection.tsx
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -31,6 +31,7 @@ type FavoritePlayerNavigationProp = StackNavigationProp<RootStackParamList>;
 interface FavoritePlayersSectionProps {
   favoritePlayers: string[];
   isDark: boolean;
+  onViewAll?: () => void; // Added this prop for View All button
 }
 
 interface PlayerData {
@@ -76,9 +77,10 @@ interface PlayerMatchResult {
   opponent_name2?: string;
 }
 
-const FavoritePlayersSection: React.FC<FavoritePlayersSectionProps> = ({
+const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
   favoritePlayers,
   isDark,
+  onViewAll,
 }) => {
   const navigation = useNavigation<FavoritePlayerNavigationProp>();
   const [loading, setLoading] = useState<boolean>(true);
@@ -204,7 +206,9 @@ const FavoritePlayersSection: React.FC<FavoritePlayersSectionProps> = ({
               styles.addButton,
               {backgroundColor: theme.colors.primary[500]},
             ]}
-            onPress={() => navigation.navigate('PlayersPage')}>
+            onPress={() =>
+              onViewAll ? onViewAll() : navigation.navigate('PlayersPage')
+            }>
             <Icon name="plus" size={16} color="white" />
             <Text style={styles.addButtonText}>Add Players</Text>
           </TouchableOpacity>
@@ -231,7 +235,9 @@ const FavoritePlayersSection: React.FC<FavoritePlayersSectionProps> = ({
               styles.emptyButton,
               {backgroundColor: theme.colors.primary[500]},
             ]}
-            onPress={() => navigation.navigate('PlayersPage')}>
+            onPress={() =>
+              onViewAll ? onViewAll() : navigation.navigate('PlayersPage')
+            }>
             <Text style={styles.emptyButtonText}>Find Players</Text>
           </TouchableOpacity>
         </View>
@@ -249,7 +255,7 @@ const FavoritePlayersSection: React.FC<FavoritePlayersSectionProps> = ({
           ]}>
           Your Players
         </Text>
-        <TouchableOpacity style={styles.viewAllButton}>
+        <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
           <Text
             style={[styles.viewAllText, {color: theme.colors.primary[500]}]}>
             View All
@@ -658,4 +664,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FavoritePlayersSection;
+export default FavoritePlayerSection;
