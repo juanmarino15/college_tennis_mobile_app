@@ -19,6 +19,7 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import TeamLogo from '../components/TeamLogo';
 import {api, Match, Team, Player} from '../api';
+import RankingHistoryChart from '../components/RankingHistoryChart';
 
 // Format date for display
 const formatDate = (dateString: string) => {
@@ -87,8 +88,9 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [selectedSeason, setSelectedSeason] = useState<string>('2024');
   const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
-  const [matchSortOrder, setMatchSortOrder] = useState('newest'); // 'newest' or 'oldest'
+  const [matchSortOrder, setMatchSortOrder] = useState('newest');
   const [teamRanking, setTeamRanking] = useState<any>(null);
+  const [teamRankingHistory, setTeamRankingHistory] = useState<any[]>([]);
 
   // Handle season selection
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -112,13 +114,32 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
       try {
         const rankingHistory = await api.rankings.getTeamRankingHistory(teamId);
-        console.log(rankingHistory);
+        console.log('Full ranking history:', rankingHistory);
+
         if (rankingHistory && rankingHistory.length > 0) {
-          // Get the most recent ranking
-          setTeamRanking(rankingHistory[0]);
+          const seasonRankings = rankingHistory.filter((ranking: any) => {
+            const rankingDate = new Date(ranking.publish_date);
+            const rankingYear = rankingDate.getFullYear();
+            const rankingMonth = rankingDate.getMonth();
+
+            // Determine which season this ranking belongs to
+            // Tennis season typically runs from fall to spring
+            const seasonYear =
+              rankingMonth >= 8 ? rankingYear : rankingYear - 1;
+
+            return seasonYear.toString() === selectedSeason;
+          });
+
+          setTeamRankingHistory(seasonRankings);
+
+          // Set current ranking (most recent)
+          if (seasonRankings.length > 0) {
+            setTeamRanking(seasonRankings[0]);
+          }
         }
       } catch (rankingErr) {
         console.error('Error fetching team ranking:', rankingErr);
+        setTeamRankingHistory([]);
       }
 
       // Clean the team name from gender markers
@@ -1214,6 +1235,21 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
     );
   };
 
+  const renderRankingHistory = () => {
+    if (!teamRankingHistory || teamRankingHistory.length === 0) {
+      return null;
+    }
+
+    return (
+      <RankingHistoryChart
+        rankingHistory={teamRankingHistory}
+        isDark={isDark}
+        theme={theme}
+        selectedSeason={selectedSeason}
+      />
+    );
+  };
+
   return (
     <View
       style={[
@@ -1245,6 +1281,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
           />
         }>
         {renderTeamHeader()}
+        {renderRankingHistory()}
         {renderRoster()}
         {renderMatches()}
       </ScrollView>

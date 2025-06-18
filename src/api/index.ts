@@ -4,8 +4,8 @@ import type {AxiosResponse} from 'axios';
 import {Alert} from 'react-native';
 
 // Base URL should come from environment config
-// const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
-const BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
+// const BASE_URL = 'http://localhost:8000/api/v1';
 
 // API response interfaces
 export interface Team {

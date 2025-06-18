@@ -178,7 +178,6 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
                 {formatConferenceName(item.conference)}
               </Text>
             )}
-            {/* Updated gender badge with gray styling */}
             <View style={styles.teamMeta}>
               <Text
                 style={[

@@ -22,6 +22,7 @@ import MatchDetailScreen from './src/screens/MatchDetailScreen';
 import TeamsScreen from './src/screens/TeamsScreen';
 import TeamDetailScreen from './src/screens/TeamDetailsScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
+import PlayerSearchScreen from './src/screens/PlayerSearchScreen'; // Add this import
 import RankingsScreen from './src/screens/RankingsScreen';
 
 // For now, use placeholders
@@ -46,6 +47,7 @@ type TabParamList = {
   Home: undefined;
   Matches: undefined;
   Teams: undefined;
+  Players: undefined; // Add Players tab
   Rankings: undefined;
 };
 
@@ -68,6 +70,8 @@ const TabNavigator = () => {
             return <MaterialIcon name="tennis" size={size} color={color} />;
           } else if (route.name === 'Teams') {
             return <FeatherIcon name="users" size={size} color={color} />;
+          } else if (route.name === 'Players') {
+            return <FeatherIcon name="user" size={size} color={color} />;
           } else if (route.name === 'Rankings') {
             return <FeatherIcon name="award" size={size} color={color} />;
           }
@@ -108,6 +112,7 @@ const TabNavigator = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="Teams" component={TeamsScreen} />
+      <Tab.Screen name="Players" component={PlayerSearchScreen} />
       <Tab.Screen name="Rankings" component={RankingsScreen} />
     </Tab.Navigator>
   );

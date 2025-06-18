@@ -20,6 +20,7 @@ import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
 import PositionBarChart from '../components/PositionBarChart';
+import RankingHistoryChart from '../components/RankingHistoryChart';
 
 // Define navigation props
 type RootStackParamList = {
@@ -133,6 +134,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [wtnData, setWtnData] = useState<Array<any>>([]);
   const [seasonsData, setSeasonsData] = useState<{[name: string]: string}>({});
   const [loadingSeasons, setLoadingSeasons] = useState<boolean>(false);
+  const [playerRankingHistory, setPlayerRankingHistory] = useState<any[]>([]);
+  const [playerRanking, setPlayerRanking] = useState<any>(null);
 
   // Toggle dropdown for season selection
   const toggleDropdown = () => {
@@ -185,6 +188,39 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
       // Fetch position data directly
       await fetchPlayerPositions(playerId, selectedSeason);
+
+      // Fetch player ranking history - ADD THIS HERE
+      try {
+        const rankingHistory = await api.rankings.getPlayerSinglesHistory(
+          playerId,
+        );
+        console.log('Full player ranking history:', rankingHistory);
+
+        if (rankingHistory && rankingHistory.length > 0) {
+          const seasonRankings = rankingHistory.filter((ranking: any) => {
+            const rankingDate = new Date(ranking.publish_date);
+            const rankingYear = rankingDate.getFullYear();
+            const rankingMonth = rankingDate.getMonth();
+
+            // Determine which season this ranking belongs to
+            // Tennis season typically runs from fall to spring
+            const seasonYear =
+              rankingMonth >= 8 ? rankingYear : rankingYear - 1;
+
+            return seasonYear.toString() === selectedSeason;
+          });
+
+          setPlayerRankingHistory(seasonRankings);
+
+          // Set current ranking (most recent)
+          if (seasonRankings.length > 0) {
+            setPlayerRanking(seasonRankings[0]);
+          }
+        }
+      } catch (rankingErr) {
+        console.error('Error fetching player ranking:', rankingErr);
+        setPlayerRankingHistory([]);
+      }
 
       setError(null);
     } catch (err) {
@@ -486,6 +522,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                     : theme.colors.text.light,
                 },
               ]}>
+              {playerRanking ? `#${playerRanking.rank} ` : ''}
               {player.first_name} {player.last_name}
             </Text>
 
@@ -955,8 +992,6 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     );
   };
 
-  // This is a continuation of the PlayerScreen.tsx cleanup
-
   // The renderMatchResults function with unused code removed and simplified
   const renderMatchResults = () => {
     // Filter matches by type
@@ -1301,6 +1336,21 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     );
   };
 
+  const renderRankingHistory = () => {
+    if (!playerRankingHistory || playerRankingHistory.length === 0) {
+      return null;
+    }
+
+    return (
+      <RankingHistoryChart
+        rankingHistory={playerRankingHistory}
+        isDark={isDark}
+        theme={theme}
+        selectedSeason={selectedSeason}
+      />
+    );
+  };
+
   // Main render function
   return (
     <View
@@ -1323,6 +1373,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
           />
         }>
         {renderPlayerHeader()}
+        {renderRankingHistory()}
         {renderPositionsChart()}
         {renderMatchResults()}
       </ScrollView>
