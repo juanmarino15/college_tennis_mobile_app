@@ -205,6 +205,118 @@ export interface DoublesRanking {
   conference?: string;
 }
 
+export interface Tournament {
+  tournament_id: string;
+  name: string;
+  start_date_time: string;
+  end_date_time: string;
+  location_name: string;
+  organization_name: string;
+  organization_division?: string;
+  tournament_type: string;
+  draws_count: number;
+  events: string[];
+}
+
+export interface TournamentsResponse {
+  tournaments: Tournament[];
+  total_count: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface TournamentDraw {
+  draw_id: string;
+  tournament_id: string;
+  event_id: string;
+  draw_name: string;
+  draw_type: string;
+  draw_size: number;
+  event_type: string;
+  gender: string;
+  draw_completed: boolean;
+  draw_active: boolean;
+  match_up_format: string;
+}
+
+export interface TournamentWithDraws {
+  tournament_id: string;
+  name: string;
+  start_date_time: string;
+  end_date_time: string;
+  location_name: string;
+  organization_name: string;
+  tournament_type: string;
+  draws: TournamentDraw[];
+}
+
+export interface TournamentMatchParticipant {
+  participant_id?: string;
+  participant_name?: string;
+  draw_position?: number;
+  seed_number?: number;
+  school_name?: string;
+  school_id?: string;
+  player1_id?: string;
+  player1_name?: string;
+  player2_id?: string;
+  player2_name?: string;
+}
+
+export interface TournamentMatch {
+  id: number;
+  match_up_id: string;
+  draw_id: string;
+  tournament_id: string;
+  event_id: string;
+  round_name: string;
+  round_number: number;
+  round_position: number;
+  match_type: string;
+  match_format: string;
+  match_status: string;
+  side1: TournamentMatchParticipant;
+  side2: TournamentMatchParticipant;
+  winning_side?: number;
+  winner_participant_id?: string;
+  winner_participant_name?: string;
+  score_side1?: string;
+  score_side2?: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  venue_name?: string;
+}
+
+export interface TournamentDrawDetails {
+  draw_id: string;
+  tournament_id: string;
+  event_id: string;
+  draw_name: string;
+  draw_type: string;
+  draw_size: number;
+  event_type: string;
+  gender: string;
+  draw_completed: boolean;
+  draw_active: boolean;
+  match_up_format: string;
+  tournament?: any;
+  matches: TournamentMatch[];
+  total_matches: number;
+  completed_matches: number;
+  scheduled_matches: number;
+  participants_count: number;
+}
+
+export interface TeamBatchRequest {
+  team_ids: string[];
+}
+
+export interface TeamLogoBatchResponse {
+  logos: {[teamId: string]: string}; // team_id -> base64 encoded logo
+}
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -351,9 +463,43 @@ export const api = {
       }
     },
 
+    getBatch: async (teamIds: string[]): Promise<Team[]> => {
+      try {
+        const response: AxiosResponse<Team[]> = await apiClient.post(
+          '/teams/batch',
+          {team_ids: teamIds},
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch teams batch:', error);
+        // Fallback to individual requests if batch endpoint fails
+        console.log(
+          'Batch endpoint failed, falling back to individual requests',
+        );
+        const teams = await Promise.all(
+          teamIds.map(id => api.teams.getById(id)),
+        );
+        return teams;
+      }
+    },
+
     getLogo: (id: string): string => {
       // In React Native, we'll return the URL rather than a blob
       return `${BASE_URL}/teams/${id}/logo`;
+    },
+
+    getLogosBatch: async (
+      teamIds: string[],
+    ): Promise<TeamLogoBatchResponse> => {
+      try {
+        const response: AxiosResponse<TeamLogoBatchResponse> =
+          await apiClient.post('/teams/logos/batch', {team_ids: teamIds});
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch logos batch:', error);
+        // Fallback: return empty object if batch fails
+        return {logos: {}};
+      }
     },
 
     // New method to get team roster by season
@@ -762,6 +908,171 @@ export const api = {
           `Failed to fetch doubles ranking history for player ${playerId}:`,
           error,
         );
+        throw error;
+      }
+    },
+  },
+  //tournaments
+  tournaments: {
+    search: async (
+      params: {
+        page?: number;
+        page_size?: number;
+        sort_by?: string;
+        sort_order?: string;
+        date_from?: string;
+        date_to?: string;
+        tournament_type?: string;
+        location?: string;
+        organization?: string;
+        status?: string;
+        query?: string;
+        division_type?: string; // Added division_type parameter
+      } = {},
+    ): Promise<TournamentsResponse> => {
+      try {
+        const response: AxiosResponse<TournamentsResponse> =
+          await apiClient.get('/tournament-draws/tournaments', {params});
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch tournaments:', error);
+        throw error;
+      }
+    },
+
+    getById: async (id: string): Promise<TournamentWithDraws> => {
+      try {
+        const response: AxiosResponse<TournamentWithDraws> =
+          await apiClient.get(`/tournament-draws/tournaments/${id}`);
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch tournament ${id}:`, error);
+        throw error;
+      }
+    },
+
+    getDraws: async (
+      tournamentId: string,
+      params: {
+        gender?: string;
+        event_type?: string;
+      } = {},
+    ): Promise<TournamentDraw[]> => {
+      try {
+        const response: AxiosResponse<TournamentDraw[]> = await apiClient.get(
+          `/tournament-draws/tournaments/${tournamentId}/draws`,
+          {params},
+        );
+        return response.data;
+      } catch (error) {
+        console.error(
+          `Failed to fetch draws for tournament ${tournamentId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    getDrawDetails: async (drawId: string): Promise<TournamentDrawDetails> => {
+      try {
+        const response: AxiosResponse<TournamentDrawDetails> =
+          await apiClient.get(`/tournament-draws/draws/${drawId}`);
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch draw details ${drawId}:`, error);
+        throw error;
+      }
+    },
+
+    getUpcoming: async (
+      params: {
+        page?: number;
+        page_size?: number;
+      } = {},
+    ): Promise<TournamentsResponse> => {
+      try {
+        const response: AxiosResponse<TournamentsResponse> =
+          await apiClient.get('/tournament-draws/tournaments/upcoming', {
+            params,
+          });
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch upcoming tournaments:', error);
+        throw error;
+      }
+    },
+
+    getCurrent: async (
+      params: {
+        page?: number;
+        page_size?: number;
+      } = {},
+    ): Promise<TournamentsResponse> => {
+      try {
+        const response: AxiosResponse<TournamentsResponse> =
+          await apiClient.get('/tournament-draws/tournaments/current', {
+            params,
+          });
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch current tournaments:', error);
+        throw error;
+      }
+    },
+
+    getRecent: async (
+      params: {
+        days?: number;
+        page?: number;
+        page_size?: number;
+      } = {},
+    ): Promise<TournamentsResponse> => {
+      try {
+        const response: AxiosResponse<TournamentsResponse> =
+          await apiClient.get('/tournament-draws/tournaments/recent', {params});
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch recent tournaments:', error);
+        throw error;
+      }
+    },
+  },
+  //batch
+  batch: {
+    getTeams: async (teamIds: string[]): Promise<Record<string, Team>> => {
+      if (teamIds.length === 0) return {};
+
+      try {
+        const response = await apiClient.post('/batch/teams', teamIds);
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch teams batch:', error);
+        throw error;
+      }
+    },
+
+    getMatchScores: async (
+      matchIds: string[],
+    ): Promise<Record<string, MatchScore>> => {
+      if (matchIds.length === 0) return {};
+
+      try {
+        const response = await apiClient.post('/batch/match-scores', matchIds);
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch scores batch:', error);
+        throw error;
+      }
+    },
+
+    getMatchesWithData: async (date: string): Promise<any> => {
+      try {
+        const response = await apiClient.get('/batch/matches-with-data', {
+          params: {date},
+        });
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch matches with data:', error);
         throw error;
       }
     },

@@ -20,6 +20,8 @@ import {ThemeContext} from '../../App';
 import Icon from 'react-native-vector-icons/Feather';
 import {StackNavigationProp} from '@react-navigation/stack';
 import TeamLogo from '../components/TeamLogo';
+import TournamentsSection from '../components/TournamentsSection';
+import DateRangePicker from '../components/DateRangePicker';
 
 // Define navigation types
 type RootStackParamList = {
@@ -27,6 +29,7 @@ type RootStackParamList = {
   MatchDetail: {matchId: string};
   TeamDetail: {teamId: string};
   PlayerDetail: {playerId: string};
+  TournamentDetail: {tournamentId: string};
 };
 
 type MatchesScreenNavigationProp = StackNavigationProp<
@@ -50,7 +53,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
 
   // State for date and filters
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  // const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Record<string, Team>>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -66,6 +69,32 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
     [],
   );
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
+  const [viewMode, setViewMode] = useState<'matches' | 'tournaments'>(
+    'matches',
+  );
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const end = new Date();
+    end.setDate(end.getDate() + 30);
+    return end;
+  });
+
+  useEffect(() => {
+    // Reset dates when switching view modes
+    if (viewMode === 'matches') {
+      // Reset to today for matches view
+      setSelectedDate(new Date());
+    } else if (viewMode === 'tournaments') {
+      // Reset to default range for tournaments view
+      const today = new Date();
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+      setSelectedDate(today);
+      setEndDate(thirtyDaysFromNow);
+    }
+  }, [viewMode]);
+
+  // const [showEndDatePicker, setShowEndDatePicker] = useState<boolean>(false);
 
   // Fetch matches based on selected date
   const fetchMatches = async () => {
@@ -87,24 +116,27 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         if (match.away_team_id) teamIds.add(match.away_team_id);
       });
 
-      // Fetch team data for each team
+      // Fetch all teams in a single batch request
       const teamsData: Record<string, Team> = {};
-      await Promise.all(
-        Array.from(teamIds).map(async teamId => {
-          try {
-            const team = await api.teams.getById(teamId);
-            teamsData[teamId] = team;
 
-            // Track available conferences
+      if (teamIds.size > 0) {
+        try {
+          // Use the new batch endpoint - SINGLE REQUEST instead of many
+          const teams = await api.teams.getBatch(Array.from(teamIds));
+
+          // Convert array to map and track conferences
+          teams.forEach(team => {
+            teamsData[team.id] = team;
             if (team.conference) {
               conferences.add(team.conference);
             }
-          } catch (error) {
-            console.error(`Failed to fetch team ${teamId}:`, error);
-          }
-        }),
-      );
+          });
+        } catch (error) {
+          console.error('Failed to fetch teams batch:', error);
+        }
+      }
 
+      // Fetch scores for completed matches
       const completedMatches = matchesData.filter(match => match.completed);
       const scorePromises = completedMatches.map(match =>
         api.matches.getScore(match.id),
@@ -133,8 +165,10 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
 
   // Initial data load and when date changes
   useEffect(() => {
-    fetchMatches();
-  }, [selectedDate]);
+    if (viewMode === 'matches') {
+      fetchMatches();
+    }
+  }, [selectedDate, viewMode]);
 
   // Handle refresh
   const onRefresh = () => {
@@ -142,18 +176,26 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
     fetchMatches();
   };
 
-  // Handle date change
-  const onDateChange = (event: any, date?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (date) {
-      setSelectedDate(date);
-    }
+  const handleStartDateChange = (date: Date) => {
+    setSelectedDate(date);
   };
 
-  // Toggle date picker
-  const toggleDatePicker = () => {
-    setShowDatePicker(!showDatePicker);
+  const handleEndDateChange = (date: Date) => {
+    setEndDate(date);
   };
+
+  // Handle date change
+  // const onDateChange = (event: any, date?: Date) => {
+  //   setShowDatePicker(Platform.OS === 'ios');
+  //   if (date) {
+  //     setSelectedDate(date);
+  //   }
+  // };
+
+  // Toggle date picker
+  // const toggleDatePicker = () => {
+  //   setShowDatePicker(!showDatePicker);
+  // };
 
   // Toggle filter panel
   const toggleFilters = () => {
@@ -520,6 +562,53 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
             : theme.colors.background.light,
         },
       ]}>
+      <View
+        style={[
+          styles.tabContainer,
+          {
+            backgroundColor: isDark
+              ? theme.colors.card.dark
+              : theme.colors.card.light,
+            borderBottomColor: isDark
+              ? theme.colors.border.dark
+              : theme.colors.border.light,
+
+            paddingTop: Platform.OS === 'ios' ? 60 : 32,
+          },
+        ]}>
+        <TouchableOpacity
+          style={[styles.tab, viewMode === 'matches' && styles.activeTab]}
+          onPress={() => setViewMode('matches')}>
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+              viewMode === 'matches' && styles.activeTabText,
+            ]}>
+            Matches
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, viewMode === 'tournaments' && styles.activeTab]}
+          onPress={() => setViewMode('tournaments')}>
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+              viewMode === 'tournaments' && styles.activeTabText,
+            ]}>
+            Tournaments
+          </Text>
+        </TouchableOpacity>
+      </View>
       {/* Header with Date and Filters */}
       <View
         style={[
@@ -534,36 +623,23 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
           },
         ]}>
         {/* Date Selector */}
-        <TouchableOpacity
-          style={styles.dateSelector}
-          onPress={toggleDatePicker}>
-          <Icon name="calendar" size={16} color={theme.colors.primary[500]} />
-          <Text
-            style={[
-              styles.dateText,
-              {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {format(selectedDate, 'EEEE, MMMM d, yyyy')}
-          </Text>
-          <Icon
-            name={showDatePicker ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color={isDark ? theme.colors.text.dimDark : theme.colors.gray[500]}
-          />
-        </TouchableOpacity>
+        <DateRangePicker
+          startDate={selectedDate}
+          endDate={endDate}
+          onStartDateChange={handleStartDateChange}
+          onEndDateChange={handleEndDateChange}
+          isDark={isDark}
+          mode={viewMode === 'matches' ? 'single' : 'range'}
+        />
 
         {/* Filters Toggle */}
         <TouchableOpacity
           style={[
             styles.filtersButton,
             {
-              backgroundColor: isDark
-                ? theme.colors.card.dark
-                : theme.colors.gray[100],
+              borderColor: isDark
+                ? theme.colors.border.dark
+                : theme.colors.border.light,
             },
           ]}
           onPress={toggleFilters}>
@@ -581,17 +657,6 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Date Picker (iOS style modal, Android inline) */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onDateChange}
-          style={styles.datePicker}
-        />
-      )}
 
       {/* Filters Panel */}
       {showFilters && (
@@ -880,32 +945,41 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
       )}
 
       {/* Matches List */}
-      {/* Matches List */}
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-          <Text
-            style={[
-              styles.loadingText,
-              {
-                color: isDark
-                  ? theme.colors.text.dimDark
-                  : theme.colors.gray[600],
-              },
-            ]}>
-            Loading matches...
-          </Text>
-        </View>
-      ) : error ? (
-        <View style={styles.centerContainer}>
-          <Icon name="alert-circle" size={48} color={theme.colors.error} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchMatches}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
+      {viewMode === 'matches' ? (
+        loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+            <Text
+              style={[
+                styles.loadingText,
+                {
+                  color: isDark
+                    ? theme.colors.text.dimDark
+                    : theme.colors.gray[600],
+                },
+              ]}>
+              Loading matches...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Icon name="alert-circle" size={48} color={theme.colors.error} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchMatches}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          renderMatchList()
+        )
       ) : (
-        renderMatchList()
+        <TournamentsSection
+          dateFrom={selectedDate}
+          dateTo={endDate} // Use the endDate state instead of calculating
+          gender={filters.gender}
+          sortBy={filters.sort === 'time-desc' ? 'date-desc' : 'date-asc'}
+          isDark={isDark}
+        />
       )}
     </View>
   );
@@ -938,8 +1012,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[1.5],
-    borderRadius: theme.borderRadius.full,
+    paddingVertical: theme.spacing[2],
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1, // Add this line
   },
   filtersButtonText: {
     marginLeft: theme.spacing[1],
@@ -1120,6 +1195,46 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     overflow: 'hidden',
     fontWeight: '500',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[2],
+    borderBottomWidth: 1,
+  },
+  tab: {
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4],
+    marginRight: theme.spacing[4],
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: theme.colors.primary[500],
+  },
+  tabText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: theme.colors.primary[500],
+    fontWeight: '600',
+  },
+  dateRangeContainer: {
+    backgroundColor: 'white',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: theme.spacing[1],
+  },
+  dateLabel: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '500',
+    marginRight: theme.spacing[2],
+    width: 50,
   },
 });
 

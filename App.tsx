@@ -110,7 +110,13 @@ const TabNavigator = () => {
         },
       })}>
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Matches" component={MatchesScreen} />
+      <Tab.Screen
+        name="Matches"
+        component={MatchesScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
       <Tab.Screen name="Teams" component={TeamsScreen} />
       <Tab.Screen name="Players" component={PlayerSearchScreen} />
       <Tab.Screen name="Rankings" component={RankingsScreen} />
