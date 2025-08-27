@@ -20,6 +20,11 @@ import {format} from 'date-fns';
 type RootStackParamList = {
   MainTabs: undefined;
   TournamentDetail: {tournamentId: string};
+  TournamentDraw: {
+    tournamentId: any;
+    eventId?: any;
+    drawName?: any;
+  };
 };
 
 type TournamentsNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -120,7 +125,9 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
 
   // Navigate to tournament details
   const handleTournamentPress = (tournamentId: string) => {
-    navigation.navigate('TournamentDetail', {tournamentId});
+    navigation.navigate('TournamentDraw', {
+      tournamentId,
+    });
   };
 
   // Get tournament status

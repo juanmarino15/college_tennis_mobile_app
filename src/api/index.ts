@@ -4,8 +4,8 @@ import type {AxiosResponse} from 'axios';
 import {Alert} from 'react-native';
 
 // Base URL should come from environment config
-const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
-// const BASE_URL = 'http://localhost:8000/api/v1';
+// const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
+const BASE_URL = 'http://localhost:8000/api/v1';
 
 // API response interfaces
 export interface Team {
@@ -239,6 +239,7 @@ export interface TournamentDraw {
   draw_completed: boolean;
   draw_active: boolean;
   match_up_format: string;
+  stage?: string;
 }
 
 export interface TournamentWithDraws {
@@ -973,10 +974,14 @@ export const api = {
       }
     },
 
-    getDrawDetails: async (drawId: string): Promise<TournamentDrawDetails> => {
+    getDrawDetails: async (
+      drawId: string,
+      stage?: string,
+    ): Promise<TournamentDrawDetails> => {
       try {
+        const params = stage ? {stage} : {};
         const response: AxiosResponse<TournamentDrawDetails> =
-          await apiClient.get(`/tournament-draws/draws/${drawId}`);
+          await apiClient.get(`/tournament-draws/draws/${drawId}`, {params});
         return response.data;
       } catch (error) {
         console.error(`Failed to fetch draw details ${drawId}:`, error);
@@ -1033,6 +1038,17 @@ export const api = {
         return response.data;
       } catch (error) {
         console.error('Failed to fetch recent tournaments:', error);
+        throw error;
+      }
+    },
+    getDrawStages: async (drawId: string): Promise<string[]> => {
+      try {
+        const response: AxiosResponse<string[]> = await apiClient.get(
+          `/tournament-draws/draws/${drawId}/stages`,
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Failed to fetch draw stages ${drawId}:`, error);
         throw error;
       }
     },

@@ -24,6 +24,7 @@ import TeamDetailScreen from './src/screens/TeamDetailsScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
 import PlayerSearchScreen from './src/screens/PlayerSearchScreen'; // Add this import
 import RankingsScreen from './src/screens/RankingsScreen';
+import TournamentDrawScreen from './src/screens/TournamentDrawScreen';
 
 // For now, use placeholders
 const PlaceholderScreen = () => <></>;
@@ -41,13 +42,18 @@ type RootStackParamList = {
   TeamDetail: {teamId: string};
   PlayerDetail: {playerId: string};
   RankingDetail: {teamId: string};
+  TournamentDraw: {
+    tournamentId: any;
+    eventId?: any;
+    drawName?: any;
+  };
 };
 
 type TabParamList = {
   Home: undefined;
   Matches: undefined;
   Teams: undefined;
-  Players: undefined; // Add Players tab
+  Players: undefined;
   Rankings: undefined;
 };
 
@@ -185,6 +191,10 @@ const App = () => {
               <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
               <Stack.Screen name="PlayerDetail" component={PlayerScreen} />
               <Stack.Screen name="RankingDetail" component={RankingsScreen} />
+              <Stack.Screen
+                name="TournamentDraw"
+                component={TournamentDrawScreen}
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>
