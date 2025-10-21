@@ -57,8 +57,8 @@ interface PlayerStats {
   doubles_wins: number;
   doubles_losses: number;
   doubles_win_pct: number;
-  wtn_singles?: number;
-  wtn_doubles?: number;
+  wtn_singles?: number | null;
+  wtn_doubles?: number | null;
 }
 
 interface TeamInfo {
@@ -106,8 +106,12 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<string>('2024');
-  const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
+  const [selectedSeason, setSelectedSeason] = useState<string>('2025');
+  const [hasSeasonData, setHasSeasonData] = useState(true);
+
+  // const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
+  const [seasons, setSeasons] = useState<string[]>([]);
+
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [positionsData, setPositionsData] = useState<{
     singles: Array<{
@@ -122,7 +126,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       wins: number;
       losses: number;
     }>;
-  }>({singles: [], doubles: []});
+  } | null>({singles: [], doubles: []});
   const [matchTypeFilter, setMatchTypeFilter] = useState<
     'all' | 'dual' | 'non-dual'
   >('all');
@@ -152,44 +156,86 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const fetchPlayerData = async () => {
     try {
       setLoading(true);
+      setHasSeasonData(true); // Reset before checking
+      let seasonDataFound = false;
 
-      // Fetch player details
+      // Fetch player details (this should always work - not season dependent)
       const playerData = await api.players.getById(playerId);
       setPlayer(playerData);
 
       // Find player's team
-      const teamData: any = await fetchPlayerTeam(playerId);
-      setPlayerTeam(teamData);
-      console.log(teamData);
-
-      // Fetch WTN data - pass the season if we have seasons data loaded
       try {
-        // Get the season ID for the selected season
+        console.log(
+          '🔍 Fetching team - playerId:',
+          playerId,
+          'selectedSeason:',
+          selectedSeason,
+        );
+        const teamData: any = await fetchPlayerTeam(playerId);
+        setPlayerTeam(teamData);
+        console.log(teamData);
+        if (teamData) seasonDataFound = true;
+      } catch (err) {
+        console.log('No team data for this season');
+        setPlayerTeam(null);
+      }
+
+      // Fetch WTN data
+      try {
         const seasonId = seasonsData[selectedSeason];
-        // If we have the season ID, fetch WTN with season filter
-        // Otherwise fetch all WTN data and filter client-side
         const wtnResult = await api.players.getWTN(
           playerId,
           seasonId ? selectedSeason : undefined,
         );
         setWtnData(wtnResult || []);
+        if (wtnResult && wtnResult.length > 0) seasonDataFound = true;
       } catch (err) {
-        console.error('Error fetching WTN data:', err);
+        console.log('No WTN data for this season');
         setWtnData([]);
       }
 
       // Fetch player match results
-      const results: any = await fetchPlayerMatches(playerId, selectedSeason);
-      setMatchResults(results);
-      setFilteredMatches(results);
+      try {
+        const results: any = await fetchPlayerMatches(playerId, selectedSeason);
+        setMatchResults(results);
+        setFilteredMatches(results);
+        setCalculatedStats(calculateStatsFromFilteredMatches(results));
+        if (results && results.length > 0) seasonDataFound = true;
+      } catch (err) {
+        console.log('No match results for this season');
+        setMatchResults([]);
+        setFilteredMatches([]);
+        setCalculatedStats({
+          singles_wins: 0,
+          singles_losses: 0,
+          singles_win_pct: 0,
+          doubles_wins: 0,
+          doubles_losses: 0,
+          doubles_win_pct: 0,
+          wtn_singles: null,
+          wtn_doubles: null,
+        });
+      }
 
-      // Initially calculate stats based on all matches
-      setCalculatedStats(calculateStatsFromFilteredMatches(results));
+      // Fetch position data
+      try {
+        const posData = await api.players.getPositions(
+          playerId,
+          selectedSeason,
+        );
+        setPositionsData(posData);
+        if (
+          posData &&
+          (posData.singles?.length > 0 || posData.doubles?.length > 0)
+        ) {
+          seasonDataFound = true;
+        }
+      } catch (err) {
+        console.log('No position data for this season');
+        setPositionsData(null);
+      }
 
-      // Fetch position data directly
-      await fetchPlayerPositions(playerId, selectedSeason);
-
-      // Fetch player ranking history - ADD THIS HERE
+      // Fetch player ranking history
       try {
         const rankingHistory = await api.rankings.getPlayerSinglesHistory(
           playerId,
@@ -203,28 +249,28 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
             const rankingMonth = rankingDate.getMonth();
 
             // Determine which season this ranking belongs to
-            // Tennis season typically runs from fall to spring
             const seasonYear =
               rankingMonth >= 8 ? rankingYear : rankingYear - 1;
-
             return seasonYear.toString() === selectedSeason;
           });
 
           setPlayerRankingHistory(seasonRankings);
 
-          // Set current ranking (most recent)
           if (seasonRankings.length > 0) {
             setPlayerRanking(seasonRankings[0]);
+            seasonDataFound = true;
           }
         }
       } catch (rankingErr) {
-        console.error('Error fetching player ranking:', rankingErr);
+        console.log('No ranking data for this season');
         setPlayerRankingHistory([]);
       }
 
+      // Update the hasSeasonData state
+      setHasSeasonData(seasonDataFound);
       setError(null);
     } catch (err) {
-      console.error('Error fetching player data:', err);
+      console.log('Error fetching player data:', err);
       setError('Failed to load player data. Please try again.');
     } finally {
       setLoading(false);
@@ -260,13 +306,32 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     };
   };
 
+  const NoSeasonDataView = () => (
+    <View style={styles.noDataContainer}>
+      <Text style={styles.noDataIcon}>📊</Text>
+      <Text style={styles.noDataTitle}>No Data Available</Text>
+      <Text style={styles.noDataMessage}>
+        This player doesn't have any recorded data for the {selectedSeason}{' '}
+        season.
+      </Text>
+      <Text style={styles.noDataSubtext}>
+        Try selecting a different season from the dropdown above.
+      </Text>
+    </View>
+  );
+
   // Fetch player's team
   const fetchPlayerTeam = async (playerId: string) => {
     try {
-      // Use the new endpoint directly
+      console.log(
+        '🔍 Fetching team - playerId:',
+        playerId,
+        'selectedSeason:',
+        selectedSeason,
+      );
       return await api.players.getTeam(playerId, selectedSeason);
     } catch (err) {
-      console.error('Error fetching player team:', err);
+      console.log('Error fetching player team:', err);
       return null;
     }
   };
@@ -277,7 +342,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       // Use the new match results endpoint
       return await api.players.getMatchResults(playerId, season);
     } catch (err) {
-      console.error('Error fetching player matches:', err);
+      console.log('Error fetching player matches:', err);
       return [];
     }
   };
@@ -316,25 +381,55 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       // Store the complete positions data
       setPositionsData(positionsData);
     } catch (err) {
-      console.error('Error fetching player positions:', err);
+      console.log('Error fetching player positions:', err);
     }
+  };
+
+  const generateSeasons = (yearsBack: number = 5): string[] => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth(); // 0-11
+
+    // If we're between August and December, current season is currentYear
+    // If we're between January and July, current season is previousYear
+    const currentSeason = currentMonth >= 7 ? currentYear : currentYear - 1;
+
+    // Generate array of seasons going back
+    const seasons: string[] = [];
+    for (let i = 0; i < yearsBack; i++) {
+      seasons.push(String(currentSeason - i));
+    }
+
+    return seasons;
   };
 
   const fetchSeasons = async () => {
     try {
       setLoadingSeasons(true);
-      const seasons = await api.seasons.getAll();
+      const seasonsResponse = await api.seasons.getAll();
 
-      // Create a mapping of season name to season ID
+      // Extract just the season names and sort them (newest first)
+      const seasonNames = seasonsResponse
+        .map(season => season.name)
+        .sort((a, b) => b.localeCompare(a)); // Sort descending
+
+      setSeasons(seasonNames);
+
+      // Create a mapping of season name to season ID (you're already doing this)
       const seasonsMap: {[name: string]: string} = {};
-      seasons.forEach(season => {
+      seasonsResponse.forEach(season => {
         seasonsMap[season.name] = season.id;
       });
-
       setSeasonsData(seasonsMap);
-      console.log('Seasons data loaded:', seasonsMap);
+
+      // Set the most recent season as default if not already set
+      if (seasonNames.length > 0 && !selectedSeason) {
+        setSelectedSeason(seasonNames[0]);
+      }
     } catch (err) {
-      console.error('Error fetching seasons:', err);
+      console.log('Error fetching seasons:', err);
+      // Fallback to generated seasons if API fails
+      setSeasons(generateSeasons());
     } finally {
       setLoadingSeasons(false);
     }
@@ -612,7 +707,10 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                     : theme.colors.text.light,
                 },
               ]}>
-              {selectedSeason}-{parseInt(selectedSeason) + 1} Season
+              {selectedSeason.includes('-')
+                ? selectedSeason
+                : `${selectedSeason}-${parseInt(selectedSeason) + 1}`}{' '}
+              Season{' '}
             </Text>
             <Icon
               name="chevron-down"
@@ -670,7 +768,9 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                           fontWeight: '600',
                         },
                       ]}>
-                      {season}-{parseInt(season) + 1}
+                      {season.includes('-')
+                        ? season
+                        : `${season}-${parseInt(season) + 1}`}
                     </Text>
                     {selectedSeason === season && (
                       <Icon
@@ -1373,9 +1473,16 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
           />
         }>
         {renderPlayerHeader()}
-        {renderRankingHistory()}
-        {renderPositionsChart()}
-        {renderMatchResults()}
+        {!loading && !hasSeasonData && <NoSeasonDataView />}
+
+        {/* Only show these sections if we have season data */}
+        {hasSeasonData && (
+          <>
+            {renderRankingHistory()}
+            {renderPositionsChart()}
+            {renderMatchResults()}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -1778,6 +1885,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: theme.typography.fontSize.base,
     padding: theme.spacing[4],
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    marginTop: 60,
+  },
+  noDataIcon: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  noDataTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
+  },
+  noDataMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 8,
+    color: '#666',
+    lineHeight: 24,
+  },
+  noDataSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#999',
+    marginTop: 8,
   },
 });
 

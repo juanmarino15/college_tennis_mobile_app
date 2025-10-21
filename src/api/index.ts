@@ -2,6 +2,7 @@
 import axios from 'axios';
 import type {AxiosResponse} from 'axios';
 import {Alert} from 'react-native';
+import cacheService from '../services/cacheService';
 
 // Base URL should come from environment config
 const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
@@ -73,7 +74,7 @@ export interface TeamStats {
   away_wins: number;
   away_losses: number;
 }
-// Add these interfaces to your existing types section
+
 export interface PlayerStats {
   singles_wins: number;
   singles_losses: number;
@@ -120,7 +121,7 @@ export interface PlayerMatchResult {
   opponent_name1: string;
   opponent_name2?: string;
 }
-// Add this to your types section in api.ts
+
 export interface PlayerSearchResult {
   person_id: string;
   tennis_id?: string;
@@ -139,6 +140,7 @@ export interface PlayerSearchResult {
   wtn_singles?: number;
   wtn_doubles?: number;
 }
+
 export interface PlayerWTN {
   person_id: string;
   tennis_id: string;
@@ -148,6 +150,7 @@ export interface PlayerWTN {
   tennis_number: number;
   is_ranked: boolean;
 }
+
 export interface Season {
   id: string;
   name: string;
@@ -155,6 +158,7 @@ export interface Season {
   start_date: string;
   end_date: string;
 }
+
 export interface RankingList {
   id: string;
   division_type: string;
@@ -333,14 +337,52 @@ apiClient.interceptors.response.use(
   error => {
     const {response} = error;
 
-    if (response && response.status >= 400) {
-      // You can customize error handling based on status codes
-      const errorMessage = response.data?.message || 'An error occurred';
+    if (response) {
+      const url = error.config?.url || '';
 
-      // For network errors, you might want to show a user-friendly message
-      Alert.alert('Error', errorMessage);
+      // Don't show alerts for 404 errors on player-specific season data
+      // These are expected when a player has no data for a specific season
+      if (response.status === 404) {
+        console.log('No data found (404):', url);
+        return Promise.reject(error);
+      }
+
+      // Don't show alerts for 500 errors on positions endpoint
+      // This often happens when there's no position data for a season
+      if (response.status === 500 && url.includes('/positions')) {
+        console.log('No position data available (500):', url);
+        return Promise.reject(error);
+      }
+
+      // Don't show alerts for empty responses (common when no season data)
+      if (
+        response.status === 200 &&
+        (!response.data ||
+          (Array.isArray(response.data) && response.data.length === 0))
+      ) {
+        console.log('Empty data received:', url);
+        return Promise.reject(error);
+      }
+
+      // Only show alerts for actual unexpected errors
+      if (response.status >= 500 && !url.includes('/positions')) {
+        Alert.alert(
+          'Server Error',
+          'Something went wrong on our end. Please try again later.',
+        );
+      } else if (response.status === 401) {
+        Alert.alert('Unauthorized', 'Please log in to continue.');
+      } else if (response.status === 403) {
+        Alert.alert(
+          'Access Denied',
+          "You don't have permission to access this resource.",
+        );
+      } else if (response.status === 400) {
+        const errorMessage = response.data?.message || 'Invalid request';
+        Alert.alert('Error', errorMessage);
+      }
     } else if (error.request) {
-      // No response received
+      // Only show network errors
       Alert.alert(
         'Network Error',
         'Unable to connect to the server. Please check your internet connection.',
@@ -351,69 +393,63 @@ apiClient.interceptors.response.use(
   },
 );
 
-// API endpoints
+// API endpoints with caching
 export const api = {
   // Matches endpoints
   matches: {
     getAll: async (date?: string): Promise<Match[]> => {
       const params = date ? {date} : {};
-      try {
+      return cacheService.cachedCall('matches', params, async () => {
         const response: AxiosResponse<Match[]> = await apiClient.get(
           '/matches',
           {params},
         );
         return response.data;
-      } catch (error) {
-        console.error('Failed to fetch matches:', error);
-        throw error;
-      }
+      });
     },
 
     getById: async (id: string): Promise<Match> => {
-      try {
+      return cacheService.cachedCall('matches', {id}, async () => {
         const response: AxiosResponse<Match> = await apiClient.get(
           `/matches/${id}`,
         );
         return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch match ${id}:`, error);
-        throw error;
-      }
+      });
     },
 
     getLineup: async (id: string): Promise<MatchLineup[]> => {
-      try {
-        const response: AxiosResponse<MatchLineup[]> = await apiClient.get(
-          `/matches/${id}/lineup`,
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch match lineup ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'matches',
+        {id, type: 'lineup'},
+        async () => {
+          const response: AxiosResponse<MatchLineup[]> = await apiClient.get(
+            `/matches/${id}/lineup`,
+          );
+          return response.data;
+        },
+      );
     },
 
     getScore: async (id: string): Promise<MatchScore> => {
-      try {
-        const response: AxiosResponse<MatchScore> = await apiClient.get(
-          `/matches/${id}/score`,
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch match score ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'matches',
+        {id, type: 'score'},
+        async () => {
+          const response: AxiosResponse<MatchScore> = await apiClient.get(
+            `/matches/${id}/score`,
+          );
+          return response.data;
+        },
+      );
     },
 
-    // New method for getting team matches by season
     getAllByTeam: async (teamId: string, season?: string): Promise<Match[]> => {
       const params: any = {team_id: teamId};
       if (season) {
         params.season = season;
       }
 
-      try {
-        // First try using the dedicated endpoint if available on the server
+      return cacheService.cachedCall('matches', {teamId, season}, async () => {
         try {
           const response: AxiosResponse<Match[]> = await apiClient.get(
             `/matches/by-team/${teamId}`,
@@ -421,7 +457,6 @@ export const api = {
           );
           return response.data;
         } catch (routeError) {
-          // If the dedicated endpoint is not available, fall back to filtering all matches
           console.log(
             'Dedicated team matches endpoint not available, using fallback',
           );
@@ -431,91 +466,100 @@ export const api = {
           );
           return allMatches.data;
         }
-      } catch (error) {
-        console.error(`Failed to fetch matches for team ${teamId}:`, error);
-        throw error;
-      }
+      });
     },
   },
 
   // Teams endpoints
   teams: {
     getAll: async (params = {}): Promise<Team[]> => {
-      try {
-        const response: AxiosResponse<Team[]> = await apiClient.get('/teams', {
-          params,
-        });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch teams:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'teams', ...params},
+        async () => {
+          const response: AxiosResponse<Team[]> = await apiClient.get(
+            '/teams',
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
 
     getById: async (id: string): Promise<Team> => {
-      try {
-        const response: AxiosResponse<Team> = await apiClient.get(
-          `/teams/${id}`,
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch team ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'team', id},
+        async () => {
+          const response: AxiosResponse<Team> = await apiClient.get(
+            `/teams/${id}`,
+          );
+          return response.data;
+        },
+      );
     },
 
     getBatch: async (teamIds: string[]): Promise<Team[]> => {
-      try {
-        const response: AxiosResponse<Team[]> = await apiClient.post(
-          '/teams/batch',
-          {team_ids: teamIds},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch teams batch:', error);
-        // Fallback to individual requests if batch endpoint fails
-        console.log(
-          'Batch endpoint failed, falling back to individual requests',
-        );
-        const teams = await Promise.all(
-          teamIds.map(id => api.teams.getById(id)),
-        );
-        return teams;
-      }
+      return cacheService.cachedCall(
+        'batch',
+        {type: 'teams', teamIds},
+        async () => {
+          try {
+            const response: AxiosResponse<Team[]> = await apiClient.post(
+              '/teams/batch',
+              {team_ids: teamIds},
+            );
+            return response.data;
+          } catch (error) {
+            console.error('Failed to fetch teams batch:', error);
+            console.log(
+              'Batch endpoint failed, falling back to individual requests',
+            );
+            const teams = await Promise.all(
+              teamIds.map(id => api.teams.getById(id)),
+            );
+            return teams;
+          }
+        },
+      );
     },
 
     getLogo: (id: string): string => {
-      // In React Native, we'll return the URL rather than a blob
       return `${BASE_URL}/teams/${id}/logo`;
     },
 
     getLogosBatch: async (
       teamIds: string[],
     ): Promise<TeamLogoBatchResponse> => {
-      try {
-        const response: AxiosResponse<TeamLogoBatchResponse> =
-          await apiClient.post('/teams/logos/batch', {team_ids: teamIds});
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch logos batch:', error);
-        // Fallback: return empty object if batch fails
-        return {logos: {}};
-      }
+      return cacheService.cachedCall(
+        'batch',
+        {type: 'logos', teamIds},
+        async () => {
+          try {
+            const response: AxiosResponse<TeamLogoBatchResponse> =
+              await apiClient.post('/teams/logos/batch', {team_ids: teamIds});
+            return response.data;
+          } catch (error) {
+            console.error('Failed to fetch logos batch:', error);
+            return {logos: {}};
+          }
+        },
+      );
     },
 
-    // New method to get team roster by season
     getRoster: async (id: string, year?: string): Promise<Player[]> => {
-      const params = year ? {year} : {};
-      try {
-        const response: AxiosResponse<Player[]> = await apiClient.get(
-          `/teams/${id}/roster`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch roster for team ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'roster', id, year},
+        async () => {
+          const params = year ? {year} : {};
+          const response: AxiosResponse<Player[]> = await apiClient.get(
+            `/teams/${id}/roster`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
   },
 
@@ -523,118 +567,130 @@ export const api = {
   players: {
     getAll: async (teamId?: string): Promise<Player[]> => {
       const params = teamId ? {team_id: teamId} : {};
-      try {
-        const response: AxiosResponse<Player[]> = await apiClient.get(
-          '/players',
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch players:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'players', ...params},
+        async () => {
+          const response: AxiosResponse<Player[]> = await apiClient.get(
+            '/players',
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
 
     getById: async (id: string): Promise<Player> => {
-      try {
-        const response: AxiosResponse<Player> = await apiClient.get(
-          `/players/${id}`,
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch player ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'player', id},
+        async () => {
+          const response: AxiosResponse<Player> = await apiClient.get(
+            `/players/${id}`,
+          );
+          return response.data;
+        },
+      );
     },
+
     getTeam: async (id: string, season?: string): Promise<PlayerTeam> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<PlayerTeam> = await apiClient.get(
-          `/players/${id}/team`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch team for player ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'playerTeam', id, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<PlayerTeam> = await apiClient.get(
+            `/players/${id}/team`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
+
     getStats: async (id: string, season?: string): Promise<PlayerStats> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<PlayerStats> = await apiClient.get(
-          `/players/${id}/stats`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch stats for player ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'stats',
+        {type: 'player', id, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<PlayerStats> = await apiClient.get(
+            `/players/${id}/stats`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
+
     getPositions: async (
       id: string,
       season?: string,
     ): Promise<PlayerPositions> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<PlayerPositions> = await apiClient.get(
-          `/players/${id}/positions`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch positions for player ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'stats',
+        {type: 'positions', id, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<PlayerPositions> = await apiClient.get(
+            `/players/${id}/positions`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
+
     getMatchResults: async (
       id: string,
       season?: string,
     ): Promise<PlayerMatchResult[]> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<PlayerMatchResult[]> =
-          await apiClient.get(`/players/${id}/match-results`, {params});
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch match results for player ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'matches',
+        {type: 'playerResults', id, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<PlayerMatchResult[]> =
+            await apiClient.get(`/players/${id}/match-results`, {params});
+          return response.data;
+        },
+      );
     },
 
     getWTN: async (id: string, season?: string): Promise<any> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<any> = await apiClient.get(
-          `/players/${id}/wtn`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch WTN for player ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'stats',
+        {type: 'wtn', id, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<any> = await apiClient.get(
+            `/players/${id}/wtn`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
+
     search: async (
       query?: string,
       gender?: string,
       season?: string,
     ): Promise<PlayerSearchResult[]> => {
-      try {
-        // Build query parameters
-        const params: any = {};
-        if (query) params.query = query;
-        if (gender) params.gender = gender;
-        if (season) params.season_name = season;
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'search', query, gender, season},
+        async () => {
+          const params: any = {};
+          if (query) params.query = query;
+          if (gender) params.gender = gender;
+          if (season) params.season_name = season;
 
-        const response: AxiosResponse<PlayerSearchResult[]> =
-          await apiClient.get('/players/search', {params});
-        return response.data;
-      } catch (error) {
-        console.error('Failed to search players:', error);
-        throw error;
-      }
+          const response: AxiosResponse<PlayerSearchResult[]> =
+            await apiClient.get('/players/search', {params});
+          return response.data;
+        },
+      );
     },
   },
 
@@ -644,93 +700,100 @@ export const api = {
       teamId: string,
       season?: string,
     ): Promise<TeamStats> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<TeamStats> = await apiClient.get(
-          `/stats/teams/${teamId}`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch stats for team ${teamId}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'stats',
+        {type: 'team', teamId, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<TeamStats> = await apiClient.get(
+            `/stats/teams/${teamId}`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
 
     getPlayerStats: async (playerId: string, season?: string): Promise<any> => {
-      const params = season ? {season} : {};
-      try {
-        const response: AxiosResponse<any> = await apiClient.get(
-          `/stats/players/${playerId}`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch stats for player ${playerId}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'stats',
+        {type: 'playerStats', playerId, season},
+        async () => {
+          const params = season ? {season} : {};
+          const response: AxiosResponse<any> = await apiClient.get(
+            `/stats/players/${playerId}`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
   },
+
+  // Seasons endpoints
   seasons: {
     getAll: async (): Promise<Season[]> => {
-      try {
-        const response: AxiosResponse<Season[]> = await apiClient.get(
-          '/seasons',
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch seasons:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'seasons'},
+        async () => {
+          const response: AxiosResponse<Season[]> = await apiClient.get(
+            '/seasons',
+          );
+          return response.data;
+        },
+      );
     },
+
     getByName: async (name: string): Promise<Season | null> => {
-      try {
-        const allSeasons = await api.seasons.getAll();
-        const season = allSeasons.find(s => s.name === name);
-        return season || null;
-      } catch (error) {
-        console.error(`Failed to fetch season by name: ${name}`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'season', name},
+        async () => {
+          const allSeasons = await api.seasons.getAll();
+          const season = allSeasons.find(s => s.name === name);
+          return season || null;
+        },
+      );
     },
   },
+
   // Rankings endpoints
   rankings: {
     // Team rankings
     getTeamRankingLists: async (
       divisionType: string = 'DIV1',
       gender: string = 'M',
-      limit: number = 100, // Increased default limit
+      limit: number = 100,
     ): Promise<RankingList[]> => {
-      try {
-        const response: AxiosResponse<RankingList[]> = await apiClient.get(
-          '/rankings/teams/lists',
-          {params: {division_type: divisionType, gender: gender}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch team ranking lists:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'teamLists', divisionType, gender, limit},
+        async () => {
+          const response: AxiosResponse<RankingList[]> = await apiClient.get(
+            '/rankings/teams/lists',
+            {params: {division_type: divisionType, gender: gender}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getTeamRankings: async (
       rankingId: string,
       limit: number = 100,
     ): Promise<TeamRanking[]> => {
-      try {
-        const response: AxiosResponse<TeamRanking[]> = await apiClient.get(
-          `/rankings/teams/lists/${rankingId}`,
-          {params: {limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch team rankings for list ${rankingId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'team', rankingId, limit},
+        async () => {
+          const response: AxiosResponse<TeamRanking[]> = await apiClient.get(
+            `/rankings/teams/lists/${rankingId}`,
+            {params: {limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getLatestTeamRankings: async (
@@ -738,35 +801,34 @@ export const api = {
       gender: string = 'M',
       limit: number = 25,
     ): Promise<TeamRanking[]> => {
-      try {
-        const response: AxiosResponse<TeamRanking[]> = await apiClient.get(
-          '/rankings/teams/latest',
-          {params: {division_type: divisionType, gender: gender, limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch latest team rankings:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'latestTeam', divisionType, gender, limit},
+        async () => {
+          const response: AxiosResponse<TeamRanking[]> = await apiClient.get(
+            '/rankings/teams/latest',
+            {params: {division_type: divisionType, gender: gender, limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getTeamRankingHistory: async (
       teamId: string,
       limit: number = 10,
     ): Promise<any> => {
-      try {
-        const response: AxiosResponse<any> = await apiClient.get(
-          `/rankings/teams/${teamId}/history`,
-          {params: {limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch ranking history for team ${teamId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'teamHistory', teamId, limit},
+        async () => {
+          const response: AxiosResponse<any> = await apiClient.get(
+            `/rankings/teams/${teamId}/history`,
+            {params: {limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     // Singles rankings
@@ -774,35 +836,34 @@ export const api = {
       divisionType: string = 'DIV1',
       gender: string = 'M',
     ): Promise<RankingList[]> => {
-      try {
-        const response: AxiosResponse<RankingList[]> = await apiClient.get(
-          '/rankings/singles/lists',
-          {params: {division_type: divisionType, gender: gender}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch singles ranking lists:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'singlesLists', divisionType, gender},
+        async () => {
+          const response: AxiosResponse<RankingList[]> = await apiClient.get(
+            '/rankings/singles/lists',
+            {params: {division_type: divisionType, gender: gender}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getSinglesRankings: async (
       rankingId: string,
       limit: number = 100,
     ): Promise<PlayerRanking[]> => {
-      try {
-        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
-          `/rankings/singles/lists/${rankingId}`,
-          {params: {limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch singles rankings for list ${rankingId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'singles', rankingId, limit},
+        async () => {
+          const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+            `/rankings/singles/lists/${rankingId}`,
+            {params: {limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getLatestSinglesRankings: async (
@@ -810,35 +871,34 @@ export const api = {
       gender: string = 'M',
       limit: number = 25,
     ): Promise<PlayerRanking[]> => {
-      try {
-        const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
-          '/rankings/singles/latest',
-          {params: {division_type: divisionType, gender: gender, limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch latest singles rankings:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'latestSingles', divisionType, gender, limit},
+        async () => {
+          const response: AxiosResponse<PlayerRanking[]> = await apiClient.get(
+            '/rankings/singles/latest',
+            {params: {division_type: divisionType, gender: gender, limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getPlayerSinglesHistory: async (
       playerId: string,
       limit: number = 10,
     ): Promise<any> => {
-      try {
-        const response: AxiosResponse<any> = await apiClient.get(
-          `/rankings/singles/players/${playerId}/history`,
-          {params: {limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch singles ranking history for player ${playerId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'singlesHistory', playerId, limit},
+        async () => {
+          const response: AxiosResponse<any> = await apiClient.get(
+            `/rankings/singles/players/${playerId}/history`,
+            {params: {limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     // Doubles rankings
@@ -846,35 +906,34 @@ export const api = {
       divisionType: string = 'DIV1',
       gender: string = 'M',
     ): Promise<RankingList[]> => {
-      try {
-        const response: AxiosResponse<RankingList[]> = await apiClient.get(
-          '/rankings/doubles/lists',
-          {params: {division_type: divisionType, gender: gender}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch doubles ranking lists:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'doublesLists', divisionType, gender},
+        async () => {
+          const response: AxiosResponse<RankingList[]> = await apiClient.get(
+            '/rankings/doubles/lists',
+            {params: {division_type: divisionType, gender: gender}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getDoublesRankings: async (
       rankingId: string,
       limit: number = 100,
     ): Promise<DoublesRanking[]> => {
-      try {
-        const response: AxiosResponse<DoublesRanking[]> = await apiClient.get(
-          `/rankings/doubles/lists/${rankingId}`,
-          {params: {limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch doubles rankings for list ${rankingId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'doubles', rankingId, limit},
+        async () => {
+          const response: AxiosResponse<DoublesRanking[]> = await apiClient.get(
+            `/rankings/doubles/lists/${rankingId}`,
+            {params: {limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getLatestDoublesRankings: async (
@@ -882,38 +941,38 @@ export const api = {
       gender: string = 'M',
       limit: number = 25,
     ): Promise<DoublesRanking[]> => {
-      try {
-        const response: AxiosResponse<DoublesRanking[]> = await apiClient.get(
-          '/rankings/doubles/latest',
-          {params: {division_type: divisionType, gender: gender, limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch latest doubles rankings:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'latestDoubles', divisionType, gender, limit},
+        async () => {
+          const response: AxiosResponse<DoublesRanking[]> = await apiClient.get(
+            '/rankings/doubles/latest',
+            {params: {division_type: divisionType, gender: gender, limit}},
+          );
+          return response.data;
+        },
+      );
     },
 
     getPlayerDoublesHistory: async (
       playerId: string,
       limit: number = 10,
     ): Promise<any> => {
-      try {
-        const response: AxiosResponse<any> = await apiClient.get(
-          `/rankings/doubles/players/${playerId}/history`,
-          {params: {limit}},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch doubles ranking history for player ${playerId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'rankings',
+        {type: 'doublesHistory', playerId, limit},
+        async () => {
+          const response: AxiosResponse<any> = await apiClient.get(
+            `/rankings/doubles/players/${playerId}/history`,
+            {params: {limit}},
+          );
+          return response.data;
+        },
+      );
     },
   },
-  //tournaments
+
+  // Tournaments endpoints
   tournaments: {
     search: async (
       params: {
@@ -928,28 +987,30 @@ export const api = {
         organization?: string;
         status?: string;
         query?: string;
-        division_type?: string; // Added division_type parameter
+        division_type?: string;
       } = {},
     ): Promise<TournamentsResponse> => {
-      try {
-        const response: AxiosResponse<TournamentsResponse> =
-          await apiClient.get('/tournament-draws/tournaments', {params});
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch tournaments:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'search', ...params},
+        async () => {
+          const response: AxiosResponse<TournamentsResponse> =
+            await apiClient.get('/tournament-draws/tournaments', {params});
+          return response.data;
+        },
+      );
     },
 
     getById: async (id: string): Promise<TournamentWithDraws> => {
-      try {
-        const response: AxiosResponse<TournamentWithDraws> =
-          await apiClient.get(`/tournament-draws/tournaments/${id}`);
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch tournament ${id}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'detail', id},
+        async () => {
+          const response: AxiosResponse<TournamentWithDraws> =
+            await apiClient.get(`/tournament-draws/tournaments/${id}`);
+          return response.data;
+        },
+      );
     },
 
     getDraws: async (
@@ -959,34 +1020,33 @@ export const api = {
         event_type?: string;
       } = {},
     ): Promise<TournamentDraw[]> => {
-      try {
-        const response: AxiosResponse<TournamentDraw[]> = await apiClient.get(
-          `/tournament-draws/tournaments/${tournamentId}/draws`,
-          {params},
-        );
-        return response.data;
-      } catch (error) {
-        console.error(
-          `Failed to fetch draws for tournament ${tournamentId}:`,
-          error,
-        );
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'draws', tournamentId, ...params},
+        async () => {
+          const response: AxiosResponse<TournamentDraw[]> = await apiClient.get(
+            `/tournament-draws/tournaments/${tournamentId}/draws`,
+            {params},
+          );
+          return response.data;
+        },
+      );
     },
 
     getDrawDetails: async (
       drawId: string,
       stage?: string,
     ): Promise<TournamentDrawDetails> => {
-      try {
-        const params = stage ? {stage} : {};
-        const response: AxiosResponse<TournamentDrawDetails> =
-          await apiClient.get(`/tournament-draws/draws/${drawId}`, {params});
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch draw details ${drawId}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'drawDetails', drawId, stage},
+        async () => {
+          const params = stage ? {stage} : {};
+          const response: AxiosResponse<TournamentDrawDetails> =
+            await apiClient.get(`/tournament-draws/draws/${drawId}`, {params});
+          return response.data;
+        },
+      );
     },
 
     getUpcoming: async (
@@ -995,16 +1055,17 @@ export const api = {
         page_size?: number;
       } = {},
     ): Promise<TournamentsResponse> => {
-      try {
-        const response: AxiosResponse<TournamentsResponse> =
-          await apiClient.get('/tournament-draws/tournaments/upcoming', {
-            params,
-          });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch upcoming tournaments:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'upcoming', ...params},
+        async () => {
+          const response: AxiosResponse<TournamentsResponse> =
+            await apiClient.get('/tournament-draws/tournaments/upcoming', {
+              params,
+            });
+          return response.data;
+        },
+      );
     },
 
     getCurrent: async (
@@ -1013,16 +1074,17 @@ export const api = {
         page_size?: number;
       } = {},
     ): Promise<TournamentsResponse> => {
-      try {
-        const response: AxiosResponse<TournamentsResponse> =
-          await apiClient.get('/tournament-draws/tournaments/current', {
-            params,
-          });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch current tournaments:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'current', ...params},
+        async () => {
+          const response: AxiosResponse<TournamentsResponse> =
+            await apiClient.get('/tournament-draws/tournaments/current', {
+              params,
+            });
+          return response.data;
+        },
+      );
     },
 
     getRecent: async (
@@ -1032,39 +1094,46 @@ export const api = {
         page_size?: number;
       } = {},
     ): Promise<TournamentsResponse> => {
-      try {
-        const response: AxiosResponse<TournamentsResponse> =
-          await apiClient.get('/tournament-draws/tournaments/recent', {params});
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch recent tournaments:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'recent', ...params},
+        async () => {
+          const response: AxiosResponse<TournamentsResponse> =
+            await apiClient.get('/tournament-draws/tournaments/recent', {
+              params,
+            });
+          return response.data;
+        },
+      );
     },
+
     getDrawStages: async (drawId: string): Promise<string[]> => {
-      try {
-        const response: AxiosResponse<string[]> = await apiClient.get(
-          `/tournament-draws/draws/${drawId}/stages`,
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Failed to fetch draw stages ${drawId}:`, error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'tournaments',
+        {type: 'stages', drawId},
+        async () => {
+          const response: AxiosResponse<string[]> = await apiClient.get(
+            `/tournament-draws/draws/${drawId}/stages`,
+          );
+          return response.data;
+        },
+      );
     },
   },
-  //batch
+
+  // Batch endpoints
   batch: {
     getTeams: async (teamIds: string[]): Promise<Record<string, Team>> => {
       if (teamIds.length === 0) return {};
 
-      try {
-        const response = await apiClient.post('/batch/teams', teamIds);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch teams batch:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'batch',
+        {type: 'teams', teamIds},
+        async () => {
+          const response = await apiClient.post('/batch/teams', teamIds);
+          return response.data;
+        },
+      );
     },
 
     getMatchScores: async (
@@ -1072,25 +1141,30 @@ export const api = {
     ): Promise<Record<string, MatchScore>> => {
       if (matchIds.length === 0) return {};
 
-      try {
-        const response = await apiClient.post('/batch/match-scores', matchIds);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch scores batch:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'batch',
+        {type: 'scores', matchIds},
+        async () => {
+          const response = await apiClient.post(
+            '/batch/match-scores',
+            matchIds,
+          );
+          return response.data;
+        },
+      );
     },
 
     getMatchesWithData: async (date: string): Promise<any> => {
-      try {
-        const response = await apiClient.get('/batch/matches-with-data', {
-          params: {date},
-        });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch matches with data:', error);
-        throw error;
-      }
+      return cacheService.cachedCall(
+        'batch',
+        {type: 'matchesWithData', date},
+        async () => {
+          const response = await apiClient.get('/batch/matches-with-data', {
+            params: {date},
+          });
+          return response.data;
+        },
+      );
     },
   },
 };

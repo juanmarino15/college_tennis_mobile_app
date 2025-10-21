@@ -171,7 +171,7 @@ const HomeScreen = () => {
                   : theme.colors.text.light,
               },
             ]}>
-            College Tennis
+            TennisU
           </Text>
           <Text
             style={[

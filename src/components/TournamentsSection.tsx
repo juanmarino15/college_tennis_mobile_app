@@ -1,5 +1,5 @@
 // src/components/TournamentsSection.tsx
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -54,6 +54,16 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const uniqueTournaments = useMemo(() => {
+    const seen = new Set<string>();
+    return tournaments.filter(tournament => {
+      if (seen.has(tournament.tournament_id)) {
+        return false;
+      }
+      seen.add(tournament.tournament_id);
+      return true;
+    });
+  }, [tournaments]);
 
   // Fetch tournaments from API
   const fetchTournaments = async (isRefresh = false) => {
@@ -176,7 +186,7 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
 
     return (
       <TouchableOpacity
-        key={tournament.tournament_id}
+        // key={tournament.tournament_id}
         style={[
           styles.tournamentCard,
           {
@@ -192,8 +202,13 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
             borderLeftColor: theme.colors.success,
           },
         ]}
-        onPress={() => handleTournamentPress(tournament.tournament_id)}
-        activeOpacity={0.7}>
+        onPress={() => {
+          if (tournament.draws_count > 0) {
+            handleTournamentPress(tournament.tournament_id);
+          }
+        }}
+        activeOpacity={tournament.draws_count > 0 ? 0.7 : 1}
+        disabled={tournament.draws_count === 0}>
         {/* Tournament Header */}
         <View style={styles.tournamentHeader}>
           <View style={styles.tournamentTitleSection}>
@@ -381,7 +396,7 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
           </View>
         )}
 
-        {/* Draws Count - THIS WILL BE FIXED BY BACKEND */}
+        {/* Draws Count */}
         <View style={styles.tournamentFooter}>
           <View style={styles.drawsInfo}>
             <Icon
@@ -400,15 +415,24 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
                     : theme.colors.gray[600],
                 },
               ]}>
-              {tournament.draws_count || 0}{' '}
-              {tournament.draws_count === 1 ? 'Draw' : 'Draws'}
+              {tournament.draws_count === 0
+                ? 'No draws available'
+                : `${tournament.draws_count} ${
+                    tournament.draws_count === 1 ? 'Draw' : 'Draws'
+                  }`}
             </Text>
           </View>
-          <Icon
-            name="chevron-right"
-            size={18}
-            color={isDark ? theme.colors.text.dimDark : theme.colors.gray[400]}
-          />
+
+          {/* Only show chevron if there are draws */}
+          {tournament.draws_count > 0 && (
+            <Icon
+              name="chevron-right"
+              size={18}
+              color={
+                isDark ? theme.colors.text.dimDark : theme.colors.gray[400]
+              }
+            />
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -495,7 +519,12 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
         }
       }}
       scrollEventThrottle={400}>
-      {tournaments.map(renderTournamentCard)}
+      {/* {tournaments.map(renderTournamentCard)} */}
+      {uniqueTournaments.map((tournament, index) => (
+        <React.Fragment key={`${tournament.tournament_id}-${index}`}>
+          {renderTournamentCard(tournament)}
+        </React.Fragment>
+      ))}
 
       {loading && tournaments.length > 0 && (
         <View style={styles.loadMoreContainer}>

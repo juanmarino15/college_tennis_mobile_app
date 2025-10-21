@@ -93,7 +93,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
       const results = await api.players.search(
         searchQuery,
         preferredGender, // This will now be 'MALE' or 'FEMALE'
-        '2024', // Current season
+        '2025', // Current season
       );
 
       if (results && results.length > 0) {

@@ -85,12 +85,19 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<string>('2024');
-  const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
+  const [selectedSeason, setSelectedSeason] = useState<string>('2025');
+  const [seasons] = useState<string[]>([
+    '2025',
+    '2024',
+    '2023',
+    '2022',
+    '2021',
+  ]);
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
   const [matchSortOrder, setMatchSortOrder] = useState('newest');
   const [teamRanking, setTeamRanking] = useState<any>(null);
   const [teamRankingHistory, setTeamRankingHistory] = useState<any[]>([]);
+  const [hasSeasonData, setHasSeasonData] = useState(true);
 
   // Handle season selection
   const [dropdownVisible, setDropdownVisible] = useState(false);

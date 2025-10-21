@@ -173,7 +173,7 @@ const Onboarding: React.FC<OnboardingProps> = ({onComplete, isDark}) => {
           styles.title,
           {color: isDark ? theme.colors.text.dark : theme.colors.text.light},
         ]}>
-        Welcome to College Tennis
+        Welcome to TennisU
       </Text>
       <Text
         style={[

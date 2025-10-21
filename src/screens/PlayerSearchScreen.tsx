@@ -76,7 +76,7 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
       const results = await api.players.search(
         searchQuery.trim(),
         selectedGender,
-        '2024', // Current season
+        // '2024', // Current season
       );
       setSearchResults(results || []);
       setSearchPerformed(true);
