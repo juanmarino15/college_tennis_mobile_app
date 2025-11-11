@@ -47,6 +47,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
   const [preferredGender, setPreferredGender] = useState<string>('MALE'); // Changed to MALE instead of M
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [noResultsFound, setNoResultsFound] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<boolean>(false);
 
   // Add debounce timer reference
   const searchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -60,6 +61,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
     if (text.trim() === '') {
       setSearchResults([]);
       setNoResultsFound(false);
+      setSearchError(false);
       // Clear any existing timer
       if (searchDebounceTimer.current) {
         clearTimeout(searchDebounceTimer.current);
@@ -74,8 +76,13 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
 
     // Only trigger search after user stops typing for 500ms and if query is 2+ characters
     if (text.trim().length >= 3) {
-      searchDebounceTimer.current = setTimeout(() => {
-        handleSearch();
+      searchDebounceTimer.current = setTimeout(async () => {
+        try {
+          await handleSearch();
+        } catch (error) {
+          console.log('Error in debounced search:', error);
+          // Error state is already set in handleSearch
+        }
       }, 500); // 500ms delay
     }
   };
@@ -86,6 +93,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
 
     setSearchLoading(true);
     setNoResultsFound(false);
+    setSearchError(false);
 
     try {
       // Use the new search endpoint
@@ -103,9 +111,10 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
         setSearchResults([]);
       }
     } catch (error) {
-      console.error('Error searching players:', error);
-      Alert.alert('Error', 'Failed to search for players');
-      setNoResultsFound(true);
+      console.log('Error searching players:', error);
+      // Set error state instead of showing Alert
+      setSearchError(true);
+      setNoResultsFound(false);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -141,6 +150,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
     setSearchQuery('');
     setSearchResults([]);
     setNoResultsFound(false);
+    setSearchError(false);
 
     // Clear any existing timer
     if (searchDebounceTimer.current) {
@@ -264,14 +274,20 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
               backgroundColor: theme.colors.primary[500],
             },
           ]}
-          onPress={() => {
+          onPress={async () => {
             setPreferredGender('MALE'); // Changed from 'M' to 'MALE'
             // Clear previous search results when changing gender
             setSearchResults([]);
             setNoResultsFound(false);
+            setSearchError(false);
             // Auto-search if there's a query
             if (searchQuery.trim().length >= 2) {
-              handleSearch();
+              try {
+                await handleSearch();
+              } catch (error) {
+                console.log('Error in gender selector search:', error);
+                // Error state is already set in handleSearch
+              }
             }
           }}>
           <Text
@@ -289,14 +305,20 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
               backgroundColor: theme.colors.primary[500],
             },
           ]}
-          onPress={() => {
+          onPress={async () => {
             setPreferredGender('FEMALE'); // Changed from 'F' to 'FEMALE'
             // Clear previous search results when changing gender
             setSearchResults([]);
             setNoResultsFound(false);
+            setSearchError(false);
             // Auto-search if there's a query
             if (searchQuery.trim().length >= 2) {
-              handleSearch();
+              try {
+                await handleSearch();
+              } catch (error) {
+                console.log('Error in gender selector search:', error);
+                // Error state is already set in handleSearch
+              }
             }
           }}>
           <Text
@@ -420,6 +442,43 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
                 ]}>
                 No players found. Try a different search term.
               </Text>
+            </View>
+          )}
+
+          {/* Error message */}
+          {searchError && (
+            <View style={styles.emptyResults}>
+              <Icon name="x-circle" size={48} color={theme.colors.error} />
+              <Text
+                style={[
+                  styles.emptyResultsText,
+                  {
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                Oops! We couldn't search for players right now.
+              </Text>
+              <Text
+                style={[
+                  styles.errorSubtext,
+                  {
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[500],
+                  },
+                ]}>
+                Please check your connection and try again.
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.retryButton,
+                  {backgroundColor: theme.colors.primary[500]},
+                ]}
+                onPress={handleSearch}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -619,6 +678,22 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing[2],
     textAlign: 'center',
     fontSize: theme.typography.fontSize.base,
+  },
+  errorSubtext: {
+    marginTop: theme.spacing[1],
+    textAlign: 'center',
+    fontSize: theme.typography.fontSize.sm,
+  },
+  retryButton: {
+    marginTop: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4],
+    borderRadius: theme.borderRadius.md,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '600',
   },
   buttonsContainer: {
     alignItems: 'center',

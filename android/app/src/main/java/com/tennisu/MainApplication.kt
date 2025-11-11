@@ -1,4 +1,4 @@
-package com.collegetennisapp
+package com.tennisu
 
 import android.app.Application
 import com.facebook.react.PackageList

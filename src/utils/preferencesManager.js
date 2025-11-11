@@ -40,7 +40,7 @@ export const PreferencesManager = {
       console.log('Loaded from storage:', parsedPrefs);
       return parsedPrefs;
     } catch (error) {
-      console.error('Failed to initialize preferences:', error);
+      console.log('Failed to initialize preferences:', error);
       return defaultPreferences;
     }
   },
@@ -52,7 +52,7 @@ export const PreferencesManager = {
       console.log('Retrieved preferences:', prefs);
       return prefs ? JSON.parse(prefs) : null;
     } catch (error) {
-      console.error('Failed to get preferences:', error);
+      console.log('Failed to get preferences:', error);
       return null;
     }
   },
@@ -67,7 +67,7 @@ export const PreferencesManager = {
       );
       return true;
     } catch (error) {
-      console.error('Failed to save preferences:', error);
+      console.log('Failed to save preferences:', error);
       return false;
     }
   },
@@ -95,7 +95,7 @@ export const PreferencesManager = {
       await PreferencesManager.savePreferences(updatedPrefs);
       return updatedPrefs;
     } catch (error) {
-      console.error('Failed to toggle favorite team:', error);
+      console.log('Failed to toggle favorite team:', error);
       return null;
     }
   },
@@ -124,7 +124,7 @@ export const PreferencesManager = {
       await PreferencesManager.savePreferences(updatedPrefs);
       return updatedPrefs;
     } catch (error) {
-      console.error('Failed to toggle favorite player:', error);
+      console.log('Failed to toggle favorite player:', error);
       return null;
     }
   },
@@ -143,7 +143,7 @@ export const PreferencesManager = {
       await PreferencesManager.savePreferences(updatedPrefs);
       return updatedPrefs;
     } catch (error) {
-      console.error('Failed to complete onboarding:', error);
+      console.log('Failed to complete onboarding:', error);
       return null;
     }
   },

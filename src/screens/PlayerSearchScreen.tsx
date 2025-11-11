@@ -81,7 +81,7 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
       setSearchResults(results || []);
       setSearchPerformed(true);
     } catch (err) {
-      console.error('Error searching players:', err);
+      console.log('Error searching players:', err);
       setError('Failed to search players. Please try again.');
       setSearchResults([]);
     } finally {

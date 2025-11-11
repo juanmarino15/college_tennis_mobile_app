@@ -132,7 +132,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
             }
           });
         } catch (error) {
-          console.error('Failed to fetch teams batch:', error);
+          console.log('Failed to fetch teams batch:', error);
         }
       }
 
@@ -155,7 +155,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
       setAvailableConferences(Array.from(conferences).sort());
       setError(null);
     } catch (err) {
-      console.error('Error fetching matches:', err);
+      console.log('Error fetching matches:', err);
       setError('Failed to load matches. Please try again.');
     } finally {
       setLoading(false);

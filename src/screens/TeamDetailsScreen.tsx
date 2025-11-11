@@ -145,7 +145,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
           }
         }
       } catch (rankingErr) {
-        console.error('Error fetching team ranking:', rankingErr);
+        console.log('Error fetching team ranking:', rankingErr);
         setTeamRankingHistory([]);
       }
 
@@ -161,6 +161,18 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       if (api.teams.getRoster) {
         // Use the getRoster method if available
         rosterData = await api.teams.getRoster(teamId, selectedSeason);
+        console.log(
+          '📋 Roster data from backend:',
+          JSON.stringify(rosterData, null, 2),
+        );
+        console.log(`📊 Total players: ${rosterData.length}`);
+        rosterData.slice(0, 3).forEach((player, index) => {
+          console.log(
+            `👤 Player ${index + 1}: ${player.first_name} ${
+              player.last_name
+            } - Class: ${player.class_year || 'NO CLASS'}`,
+          );
+        });
       } else {
         // Fallback to getAll players and filter by team
         const allPlayers = await api.players.getAll(teamId);
@@ -210,7 +222,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
             const team = await api.teams.getById(id);
             teamsData[id] = team;
           } catch (err) {
-            console.error(`Error fetching team ${id}:`, err);
+            console.log(`Error fetching team ${id}:`, err);
           }
         }),
       );
@@ -243,7 +255,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       setStats(statsData);
       setError(null);
     } catch (err) {
-      console.error('Error fetching team data:', err);
+      console.log('Error fetching team data:', err);
       setError('Failed to load team data. Please try again.');
     } finally {
       setLoading(false);
@@ -307,7 +319,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
           .find(part => part.type === 'timeZoneName')?.value || timezone
       );
     } catch (e) {
-      console.error('Error getting timezone abbreviation:', e);
+      console.log('Error getting timezone abbreviation:', e);
       return timezone; // Return the original timezone string if can't get abbreviation
     }
   };
@@ -333,7 +345,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       // Format the time in the specified timezone
       return new Intl.DateTimeFormat('en-US', options).format(date);
     } catch (e) {
-      console.error('Error formatting time with timezone:', e);
+      console.log('Error formatting time with timezone:', e);
       // Fallback to basic formatting
       try {
         return format(new Date(timeString), 'h:mm a');
@@ -787,7 +799,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
             : theme.colors.card.light,
         },
       ]}>
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, {marginBottom: theme.spacing[3]}]}>
         <Icon
           name="users"
           size={18}
@@ -799,6 +811,17 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
             {color: isDark ? theme.colors.text.dark : theme.colors.text.light},
           ]}>
           Roster
+        </Text>
+        <Text
+          style={[
+            styles.rosterCount,
+            {
+              color: isDark
+                ? theme.colors.text.dimDark
+                : theme.colors.gray[500],
+            },
+          ]}>
+          ({roster.length})
         </Text>
       </View>
 
@@ -818,12 +841,12 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
         <FlatList
           data={roster}
           keyExtractor={item => item.person_id}
-          numColumns={2}
+          numColumns={1}
           scrollEnabled={false}
           renderItem={({item}) => (
             <TouchableOpacity
               style={[
-                styles.playerCard,
+                styles.playerCardSingle,
                 {
                   backgroundColor: isDark
                     ? theme.colors.background.dark
@@ -835,13 +858,12 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
               ]}
               onPress={() => navigateToPlayer(item.person_id)}
               activeOpacity={0.7}>
-              <View style={styles.playerInfo}>
+              <View style={styles.playerInfoSingle}>
                 {item.avatar_url ? (
                   <View style={styles.avatarContainer}>
-                    {/* You would use an Image component here for the avatar */}
                     <Icon
                       name="user"
-                      size={16}
+                      size={20}
                       color={
                         isDark
                           ? theme.colors.text.dimDark
@@ -861,7 +883,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                     ]}>
                     <Icon
                       name="user"
-                      size={16}
+                      size={20}
                       color={
                         isDark
                           ? theme.colors.text.dimDark
@@ -870,21 +892,64 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                     />
                   </View>
                 )}
-                <Text
-                  style={[
-                    styles.playerName,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {item.first_name} {item.last_name}
-                </Text>
+                <View style={styles.playerNameContainer}>
+                  <Text
+                    style={[
+                      styles.playerNameSingle,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dark
+                          : theme.colors.text.light,
+                      },
+                    ]}>
+                    {item.first_name} {item.last_name}
+                  </Text>
+                  <View style={styles.playerMetaRow}>
+                    {item.class_year && (
+                      <Text
+                        style={[
+                          styles.playerClass,
+                          {
+                            color: isDark
+                              ? theme.colors.text.dimDark
+                              : theme.colors.gray[500],
+                          },
+                        ]}>
+                        {item.class_year}
+                      </Text>
+                    )}
+                    {/* {item.wtn_singles && (
+                    <>
+                      <Text
+                        style={[
+                          styles.metaDivider,
+                          {
+                            color: isDark
+                              ? theme.colors.text.dimDark
+                              : theme.colors.gray[400],
+                          },
+                        ]}>
+                        •
+                      </Text>
+                      <Text
+                        style={[
+                          styles.playerWTN,
+                          {
+                            color: isDark
+                              ? theme.colors.primary[400]
+                              : theme.colors.primary[600],
+                          },
+                        ]}>
+                        WTN {item.wtn_singles.toFixed(2)}
+                      </Text>
+                    </>
+                  )} */}
+                  </View>
+                </View>
               </View>
               <Icon
                 name="chevron-right"
-                size={16}
+                size={20}
                 color={
                   isDark ? theme.colors.text.dimDark : theme.colors.gray[400]
                 }
@@ -1267,15 +1332,39 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
             : theme.colors.background.light,
         },
       ]}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}>
-        <Icon
-          name="chevron-left"
-          size={24}
-          color={isDark ? theme.colors.text.dark : theme.colors.gray[700]}
-        />
-      </TouchableOpacity>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: isDark
+              ? theme.colors.card.dark
+              : theme.colors.card.light,
+            borderBottomColor: isDark
+              ? theme.colors.border.dark
+              : theme.colors.border.light,
+          },
+        ]}>
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}>
+          <Icon
+            name="arrow-left"
+            size={24}
+            color={isDark ? theme.colors.text.dark : theme.colors.text.light}
+          />
+        </TouchableOpacity>
+
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: isDark ? theme.colors.text.dark : theme.colors.text.light,
+            },
+          ]}>
+          Team Details
+        </Text>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -1300,17 +1389,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backButton: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
+    justifyContent: 'center', // Center the content
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    position: 'relative',
   },
-  backButtonText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: '500',
-    marginLeft: theme.spacing[1],
+  headerBackButton: {
+    padding: 8,
+    position: 'absolute',
+    left: 16,
+    zIndex: 1,
+    top: 50,
   },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   scrollContent: {
     padding: theme.spacing[4],
     paddingBottom: theme.spacing[40], // Extra space at bottom for bottom navigation
@@ -1349,10 +1455,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing[4],
     marginBottom: theme.spacing[4],
     ...theme.shadows.md,
-  },
-  headerContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   teamInfo: {
     alignItems: 'center',
@@ -1502,22 +1604,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  avatarContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing[2],
-  },
-  avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing[2],
-  },
   playerName: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: '500',
@@ -1584,6 +1670,66 @@ const styles = StyleSheet.create({
   timezoneText: {
     fontSize: theme.typography.fontSize.xs,
     marginTop: 2,
+  },
+
+  // Replace these styles:
+  rosterCount: {
+    fontSize: theme.typography.fontSize.sm,
+    marginLeft: theme.spacing[1],
+  },
+  playerCardSingle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing[3],
+    marginBottom: theme.spacing[2],
+  },
+  playerInfoSingle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing[3],
+  },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing[3],
+  },
+  playerNameContainer: {
+    flex: 1,
+  },
+  playerNameSingle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    marginBottom: theme.spacing[1],
+  },
+  playerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+  },
+  playerClass: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '500',
+  },
+  metaDivider: {
+    fontSize: theme.typography.fontSize.xs,
+  },
+  playerWTN: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '500',
   },
 });
 

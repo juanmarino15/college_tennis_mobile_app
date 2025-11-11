@@ -5,8 +5,8 @@ import {Alert} from 'react-native';
 import cacheService from '../services/cacheService';
 
 // Base URL should come from environment config
-const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
-// const BASE_URL = 'http://localhost:8000/api/v1';
+// const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
+const BASE_URL = 'http://localhost:8000/api/v1';
 
 // API response interfaces
 export interface Team {
@@ -26,6 +26,7 @@ export interface Player {
   first_name: string;
   last_name: string;
   avatar_url?: string;
+  class_year?: string;
 }
 
 export interface Match {
@@ -92,6 +93,7 @@ export interface PlayerTeam {
   abbreviation?: string;
   conference?: string;
   gender?: string;
+  class_year?: string;
 }
 
 export interface PlayerPosition {
@@ -313,6 +315,13 @@ export interface TournamentDrawDetails {
   scheduled_matches: number;
   participants_count: number;
 }
+export interface Season {
+  id: string;
+  name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+}
 
 export interface TeamBatchRequest {
   team_ids: string[];
@@ -511,7 +520,7 @@ export const api = {
             );
             return response.data;
           } catch (error) {
-            console.error('Failed to fetch teams batch:', error);
+            console.log('Failed to fetch teams batch:', error);
             console.log(
               'Batch endpoint failed, falling back to individual requests',
             );
@@ -540,7 +549,7 @@ export const api = {
               await apiClient.post('/teams/logos/batch', {team_ids: teamIds});
             return response.data;
           } catch (error) {
-            console.error('Failed to fetch logos batch:', error);
+            console.log('Failed to fetch logos batch:', error);
             return {logos: {}};
           }
         },
@@ -603,6 +612,8 @@ export const api = {
             `/players/${id}/team`,
             {params},
           );
+          console.log('API getTeam raw response:', response.data);
+
           return response.data;
         },
       );
@@ -688,6 +699,23 @@ export const api = {
 
           const response: AxiosResponse<PlayerSearchResult[]> =
             await apiClient.get('/players/search', {params});
+          return response.data;
+        },
+      );
+    },
+    getSeasons: async (
+      id: string,
+      include_current?: boolean,
+    ): Promise<Season[]> => {
+      return cacheService.cachedCall(
+        'profiles',
+        {type: 'playerSeasons', id, include_current},
+        async () => {
+          const params = include_current !== undefined ? {include_current} : {};
+          const response: AxiosResponse<Season[]> = await apiClient.get(
+            `/players/${id}/seasons`,
+            {params},
+          );
           return response.data;
         },
       );

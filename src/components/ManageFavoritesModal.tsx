@@ -135,7 +135,7 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
         ),
       );
     } catch (error) {
-      console.error('Failed to fetch teams:', error);
+      console.log('Failed to fetch teams:', error);
     } finally {
       setLoading(false);
     }
@@ -156,7 +156,7 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
         setFilteredPlayers([]);
       }
     } catch (error) {
-      console.error('Failed to fetch players:', error);
+      console.log('Failed to fetch players:', error);
     } finally {
       setLoading(false);
     }
@@ -196,7 +196,7 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
         setFilteredPlayers(updatedPlayers);
       }
     } catch (error) {
-      console.error('Error searching players:', error);
+      console.log('Error searching players:', error);
     } finally {
       setLoading(false);
     }
@@ -230,7 +230,7 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
       // Notify parent component about the update
       onFavoritesUpdated(mode, updatedFavorites);
     } catch (error) {
-      console.error(`Failed to update ${mode}:`, error);
+      console.log(`Failed to update ${mode}:`, error);
     }
   };
 

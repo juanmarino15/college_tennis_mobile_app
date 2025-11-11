@@ -63,7 +63,7 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
       setTeams(teamsData);
       setError(null);
     } catch (err) {
-      console.error('Error fetching teams:', err);
+      console.log('Error fetching teams:', err);
       setError('Failed to load teams. Please try again.');
     } finally {
       setLoading(false);

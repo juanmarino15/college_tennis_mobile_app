@@ -71,7 +71,7 @@ const TennisNewsFeed = ({preferredDivision, preferredGender, isDark}) => {
         // Filter based on preferences in a real implementation
         setNewsArticles(mockNews);
       } catch (error) {
-        console.error('Failed to fetch news:', error);
+        console.log('Failed to fetch news:', error);
         setError('Unable to load tennis news');
       } finally {
         setLoading(false);
@@ -82,7 +82,7 @@ const TennisNewsFeed = ({preferredDivision, preferredGender, isDark}) => {
   }, [preferredDivision, preferredGender]);
 
   const handleNewsItemPress = url => {
-    Linking.openURL(url).catch(err => console.error('Error opening URL:', err));
+    Linking.openURL(url).catch(err => console.log('Error opening URL:', err));
   };
 
   // Format relative time (e.g., "2 days ago")

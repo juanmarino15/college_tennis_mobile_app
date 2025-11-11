@@ -66,6 +66,7 @@ interface TeamInfo {
   name: string;
   abbreviation?: string;
   team_name: string;
+  class_year?: string;
 }
 
 interface MatchResult {
@@ -94,6 +95,12 @@ const formatMatchDate = (dateString: string) => {
   }
 };
 
+// Helper function to extract year from season string
+const extractSeasonYear = (season: string): string => {
+  // Handle both "2024" and "2024-2025" formats, return just first year
+  return season.split('-')[0];
+};
+
 const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const {playerId} = route.params;
   const {isDark} = useContext(ThemeContext);
@@ -106,8 +113,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<string>('2025');
-  const [hasSeasonData, setHasSeasonData] = useState(true);
+  const [selectedSeason, setSelectedSeason] = useState<string>('');
+  const [hasSeasonData, setHasSeasonData] = useState(false);
 
   // const [seasons] = useState<string[]>(['2024', '2023', '2022', '2021']);
   const [seasons, setSeasons] = useState<string[]>([]);
@@ -166,12 +173,15 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
       // Find player's team
       try {
         console.log(
-          '🔍 Fetching team - playerId:',
+          'Fetching team - playerId:',
           playerId,
           'selectedSeason:',
           selectedSeason,
         );
-        const teamData: any = await fetchPlayerTeam(playerId);
+        const seasonYear = extractSeasonYear(selectedSeason);
+        const teamData: any = await fetchPlayerTeam(playerId, seasonYear);
+        console.log('Team data received:', teamData); // ADD THIS LINE
+        console.log('Class year from team data:', teamData?.class_year); // ADD THIS LINE
         setPlayerTeam(teamData);
         console.log(teamData);
         if (teamData) seasonDataFound = true;
@@ -196,7 +206,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
       // Fetch player match results
       try {
-        const results: any = await fetchPlayerMatches(playerId, selectedSeason);
+        const seasonYear = extractSeasonYear(selectedSeason);
+        const results: any = await fetchPlayerMatches(playerId, seasonYear);
         setMatchResults(results);
         setFilteredMatches(results);
         setCalculatedStats(calculateStatsFromFilteredMatches(results));
@@ -219,10 +230,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
       // Fetch position data
       try {
-        const posData = await api.players.getPositions(
-          playerId,
-          selectedSeason,
-        );
+        const seasonYear = extractSeasonYear(selectedSeason);
+        const posData = await api.players.getPositions(playerId, seasonYear);
         setPositionsData(posData);
         if (
           posData &&
@@ -243,6 +252,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
         console.log('Full player ranking history:', rankingHistory);
 
         if (rankingHistory && rankingHistory.length > 0) {
+          const targetSeasonYear = extractSeasonYear(selectedSeason);
           const seasonRankings = rankingHistory.filter((ranking: any) => {
             const rankingDate = new Date(ranking.publish_date);
             const rankingYear = rankingDate.getFullYear();
@@ -251,7 +261,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
             // Determine which season this ranking belongs to
             const seasonYear =
               rankingMonth >= 8 ? rankingYear : rankingYear - 1;
-            return seasonYear.toString() === selectedSeason;
+            return seasonYear.toString() === targetSeasonYear;
           });
 
           setPlayerRankingHistory(seasonRankings);
@@ -308,7 +318,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
   const NoSeasonDataView = () => (
     <View style={styles.noDataContainer}>
-      <Text style={styles.noDataIcon}>📊</Text>
+      <Text style={styles.noDataIcon}>Ã°Å¸â€œÅ </Text>
       <Text style={styles.noDataTitle}>No Data Available</Text>
       <Text style={styles.noDataMessage}>
         This player doesn't have any recorded data for the {selectedSeason}{' '}
@@ -321,15 +331,10 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   );
 
   // Fetch player's team
-  const fetchPlayerTeam = async (playerId: string) => {
+  const fetchPlayerTeam = async (playerId: string, season: string) => {
     try {
-      console.log(
-        '🔍 Fetching team - playerId:',
-        playerId,
-        'selectedSeason:',
-        selectedSeason,
-      );
-      return await api.players.getTeam(playerId, selectedSeason);
+      console.log('Fetching team - playerId:', playerId, 'season:', season);
+      return await api.players.getTeam(playerId, season);
     } catch (err) {
       console.log('Error fetching player team:', err);
       return null;
@@ -406,30 +411,61 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   const fetchSeasons = async () => {
     try {
       setLoadingSeasons(true);
-      const seasonsResponse = await api.seasons.getAll();
+
+      // 👇 NEW: Fetch only seasons where player has data (including current season)
+      const playerSeasons = await api.players.getSeasons(playerId, true);
 
       // Extract just the season names and sort them (newest first)
-      const seasonNames = seasonsResponse
+      const seasonNames = playerSeasons
         .map(season => season.name)
-        .sort((a, b) => b.localeCompare(a)); // Sort descending
+        .sort((a, b) => b.localeCompare(a));
 
       setSeasons(seasonNames);
 
-      // Create a mapping of season name to season ID (you're already doing this)
+      // Create a mapping of season name to season ID
       const seasonsMap: {[name: string]: string} = {};
-      seasonsResponse.forEach(season => {
+      playerSeasons.forEach(season => {
         seasonsMap[season.name] = season.id;
       });
       setSeasonsData(seasonsMap);
 
-      // Set the most recent season as default if not already set
-      if (seasonNames.length > 0 && !selectedSeason) {
+      // Set the most recent season as default
+      if (seasonNames.length > 0) {
         setSelectedSeason(seasonNames[0]);
       }
+
+      setLoading(false);
     } catch (err) {
-      console.log('Error fetching seasons:', err);
-      // Fallback to generated seasons if API fails
-      setSeasons(generateSeasons());
+      console.log('Error fetching player seasons:', err);
+
+      // Fallback to all seasons if endpoint fails
+      try {
+        const allSeasonsResponse = await api.seasons.getAll();
+        const seasonNames = allSeasonsResponse
+          .map(season => season.name)
+          .sort((a, b) => b.localeCompare(a));
+
+        setSeasons(seasonNames);
+
+        const seasonsMap: {[name: string]: string} = {};
+        allSeasonsResponse.forEach(season => {
+          seasonsMap[season.name] = season.id;
+        });
+        setSeasonsData(seasonsMap);
+
+        if (seasonNames.length > 0) {
+          setSelectedSeason(seasonNames[0]);
+        }
+      } catch (fallbackErr) {
+        console.log('Error fetching all seasons:', fallbackErr);
+        // Final fallback to generated seasons
+        const fallbackSeasons = generateSeasons();
+        setSeasons(fallbackSeasons);
+        if (fallbackSeasons.length > 0) {
+          setSelectedSeason(fallbackSeasons[0]);
+        }
+      }
+      setLoading(false);
     } finally {
       setLoadingSeasons(false);
     }
@@ -437,7 +473,10 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
   // Initial load of data
   useEffect(() => {
-    fetchPlayerData();
+    // Only fetch player data if we have a selected season
+    if (selectedSeason) {
+      fetchPlayerData();
+    }
   }, [playerId, selectedSeason, seasonsData]);
 
   useEffect(() => {
@@ -515,7 +554,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                 : theme.colors.gray[600],
             },
           ]}>
-          Loading match details...
+          Loading player details...
         </Text>
       </View>
     );
@@ -621,6 +660,21 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
               {player.first_name} {player.last_name}
             </Text>
 
+            {/* Display Class Year if available */}
+            {playerTeam?.class_year && (
+              <Text
+                style={[
+                  styles.classYearText,
+                  {
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                {playerTeam.class_year}
+              </Text>
+            )}
+
             {/* Display University Name */}
             {universityName && (
               <Text
@@ -641,7 +695,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
               <View style={styles.wtnContainer}>
                 {wtnValues.singles !== null && (
                   <View style={styles.wtnBadge}>
-                    <Text style={styles.wtnLabel}>UTR-S</Text>
+                    <Text style={styles.wtnLabel}>WTN-S</Text>
                     <Text style={styles.wtnValue}>
                       {wtnValues.singles.toFixed(1)}
                     </Text>
@@ -650,7 +704,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
                 {wtnValues.doubles !== null && (
                   <View style={styles.wtnBadge}>
-                    <Text style={styles.wtnLabel}>UTR-D</Text>
+                    <Text style={styles.wtnLabel}>WTN-D</Text>
                     <Text style={styles.wtnValue}>
                       {wtnValues.doubles.toFixed(1)}
                     </Text>
@@ -683,108 +737,114 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
         </View>
 
         {/* Season Selector */}
-        <View style={styles.seasonSelector}>
-          <TouchableOpacity
-            style={[
-              styles.dropdownButton,
-              {
-                backgroundColor: isDark
-                  ? theme.colors.background.dark
-                  : theme.colors.gray[50],
-                borderColor: isDark
-                  ? theme.colors.border.dark
-                  : theme.colors.border.light,
-              },
-            ]}
-            onPress={toggleDropdown}>
-            <Icon name="calendar" size={16} color={theme.colors.primary[500]} />
-            <Text
-              style={[
-                styles.dropdownLabel,
-                {
-                  color: isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.text.light,
-                },
-              ]}>
-              {selectedSeason.includes('-')
-                ? selectedSeason
-                : `${selectedSeason}-${parseInt(selectedSeason) + 1}`}{' '}
-              Season{' '}
-            </Text>
-            <Icon
-              name="chevron-down"
-              size={16}
-              color={
-                isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
-              }
-            />
-          </TouchableOpacity>
-
-          {/* Dropdown Modal */}
-          <Modal
-            visible={dropdownVisible}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setDropdownVisible(false)}>
+        {selectedSeason && (
+          <View style={styles.seasonSelector}>
             <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setDropdownVisible(false)}>
-              <View
+              style={[
+                styles.dropdownButton,
+                {
+                  backgroundColor: isDark
+                    ? theme.colors.background.dark
+                    : theme.colors.gray[50],
+                  borderColor: isDark
+                    ? theme.colors.border.dark
+                    : theme.colors.border.light,
+                },
+              ]}
+              onPress={toggleDropdown}>
+              <Icon
+                name="calendar"
+                size={16}
+                color={theme.colors.primary[500]}
+              />
+              <Text
                 style={[
-                  styles.dropdownMenu,
+                  styles.dropdownLabel,
                   {
-                    backgroundColor: isDark
-                      ? theme.colors.card.dark
-                      : theme.colors.card.light,
-                    top: 220, // Position below the dropdown button
+                    color: isDark
+                      ? theme.colors.text.dark
+                      : theme.colors.text.light,
                   },
                 ]}>
-                {seasons.map(season => (
-                  <TouchableOpacity
-                    key={season}
-                    style={[
-                      styles.dropdownItem,
-                      selectedSeason === season && {
-                        backgroundColor: isDark
-                          ? theme.colors.primary[900]
-                          : theme.colors.primary[50],
-                      },
-                    ]}
-                    onPress={() => selectSeason(season)}>
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        {
-                          color: isDark
-                            ? theme.colors.text.dark
-                            : theme.colors.text.light,
-                        },
-                        selectedSeason === season && {
-                          color: isDark
-                            ? theme.colors.primary[400]
-                            : theme.colors.primary[600],
-                          fontWeight: '600',
-                        },
-                      ]}>
-                      {season.includes('-')
-                        ? season
-                        : `${season}-${parseInt(season) + 1}`}
-                    </Text>
-                    {selectedSeason === season && (
-                      <Icon
-                        name="check"
-                        size={16}
-                        color={theme.colors.primary[500]}
-                      />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
+                {selectedSeason.includes('-')
+                  ? selectedSeason
+                  : `${selectedSeason}-${parseInt(selectedSeason) + 1}`}{' '}
+                Season{' '}
+              </Text>
+              <Icon
+                name="chevron-down"
+                size={16}
+                color={
+                  isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
+                }
+              />
             </TouchableOpacity>
-          </Modal>
-        </View>
+
+            {/* Dropdown Modal */}
+            <Modal
+              visible={dropdownVisible}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setDropdownVisible(false)}>
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setDropdownVisible(false)}>
+                <View
+                  style={[
+                    styles.dropdownMenu,
+                    {
+                      backgroundColor: isDark
+                        ? theme.colors.card.dark
+                        : theme.colors.card.light,
+                      top: 220, // Position below the dropdown button
+                    },
+                  ]}>
+                  {seasons.map(season => (
+                    <TouchableOpacity
+                      key={season}
+                      style={[
+                        styles.dropdownItem,
+                        selectedSeason === season && {
+                          backgroundColor: isDark
+                            ? theme.colors.primary[900]
+                            : theme.colors.primary[50],
+                        },
+                      ]}
+                      onPress={() => selectSeason(season)}>
+                      <Text
+                        style={[
+                          styles.dropdownItemText,
+                          {
+                            color: isDark
+                              ? theme.colors.text.dark
+                              : theme.colors.text.light,
+                          },
+                          selectedSeason === season && {
+                            color: isDark
+                              ? theme.colors.primary[400]
+                              : theme.colors.primary[600],
+                            fontWeight: '600',
+                          },
+                        ]}>
+                        {season.includes('-')
+                          ? season
+                          : `${season}-${parseInt(season) + 1}`}
+                      </Text>
+                      {selectedSeason === season && (
+                        <Icon
+                          name="check"
+                          size={16}
+                          color={theme.colors.primary[500]}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </Modal>
+          </View>
+        )}
 
         {/* Match Type Filters Row */}
         <View style={styles.filtersRow}>
@@ -1452,6 +1512,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   };
 
   // Main render function
+  // Main render function
   return (
     <View
       style={[
@@ -1462,6 +1523,41 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
             : theme.colors.background.light,
         },
       ]}>
+      {/* ADD THIS HEADER */}
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: isDark
+              ? theme.colors.card.dark
+              : theme.colors.card.light,
+            borderBottomColor: isDark
+              ? theme.colors.border.dark
+              : theme.colors.border.light,
+          },
+        ]}>
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}>
+          <Icon
+            name="arrow-left"
+            size={24}
+            color={isDark ? theme.colors.text.dark : theme.colors.text.light}
+          />
+        </TouchableOpacity>
+
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: isDark ? theme.colors.text.dark : theme.colors.text.light,
+            },
+          ]}>
+          Player Details
+        </Text>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -1488,12 +1584,10 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   );
 };
 
-// Cleaned up StyleSheet - removed unused styles and consolidated duplicate styles
 const styles = StyleSheet.create({
   // Container styles
   container: {
     flex: 1,
-    marginTop: 70,
   },
   scrollContent: {
     padding: theme.spacing[4],
@@ -1915,6 +2009,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#999',
     marginTop: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
+  headerBackButton: {
+    padding: 8,
+    position: 'absolute',
+    left: 16,
+    top: 50,
+    zIndex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  classYearText: {
+    fontSize: theme.typography.fontSize.sm,
+    marginTop: theme.spacing[0.5],
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 

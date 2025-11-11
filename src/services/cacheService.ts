@@ -68,7 +68,7 @@ class CacheService {
       console.log(`✅ Cache HIT: ${category}`, params);
       return entry.data;
     } catch (error) {
-      console.error('Cache get error:', error);
+      console.log('Cache get error:', error);
       return null;
     }
   }
@@ -92,7 +92,7 @@ class CacheService {
       await AsyncStorage.setItem(key, JSON.stringify(entry));
       console.log(`💾 Cache SET: ${category}`, params);
     } catch (error) {
-      console.error('Cache set error:', error);
+      console.log('Cache set error:', error);
     }
   }
 

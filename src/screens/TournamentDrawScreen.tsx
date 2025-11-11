@@ -97,7 +97,7 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
       setAvailableStages(stages);
       setSelectedStage(stages.includes('MAIN') ? 'MAIN' : stages[0] || '');
     } catch (err) {
-      console.error('Failed to fetch draw stages:', err);
+      console.log('Failed to fetch draw stages:', err);
       setAvailableStages([]);
     }
   };
@@ -129,7 +129,7 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
         await fetchDrawStages(targetDraw.draw_id);
       }
     } catch (err) {
-      console.error('Failed to fetch available draws:', err);
+      console.log('Failed to fetch available draws:', err);
       setError('Failed to load tournament draws');
     }
   };
@@ -140,7 +140,7 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
       setSelectedDraw(details);
       setError(null);
     } catch (err) {
-      console.error('Failed to fetch draw details:', err);
+      console.log('Failed to fetch draw details:', err);
       setError('Failed to load draw details');
     }
   };

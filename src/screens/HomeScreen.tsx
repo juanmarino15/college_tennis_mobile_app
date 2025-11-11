@@ -56,7 +56,7 @@ const HomeScreen = () => {
         setOnboardingCompleted(prefs.onboardingCompleted || false);
       }
     } catch (error) {
-      console.error('Failed to load preferences:', error);
+      console.log('Failed to load preferences:', error);
       Alert.alert(
         'Error',
         'Failed to load your preferences. Please restart the app.',
@@ -96,7 +96,7 @@ const HomeScreen = () => {
       });
       setOnboardingCompleted(true);
     } catch (error) {
-      console.error('Failed to complete onboarding:', error);
+      console.log('Failed to complete onboarding:', error);
       Alert.alert(
         'Error',
         'Failed to save your preferences. Please try again.',

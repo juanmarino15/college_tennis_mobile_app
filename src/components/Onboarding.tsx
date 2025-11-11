@@ -62,7 +62,7 @@ const Onboarding: React.FC<OnboardingProps> = ({onComplete, isDark}) => {
         );
         setTeams(sortedTeams);
       } catch (error) {
-        console.error('Failed to fetch teams:', error);
+        console.log('Failed to fetch teams:', error);
       } finally {
         setLoading(false);
       }

@@ -156,7 +156,7 @@ const BigMatchesSection: React.FC<BigMatchesSectionProps> = ({
         // Take top 5 big matches
         setUpcomingMatches(scoredMatches.slice(0, 5) as Match[]);
       } catch (error) {
-        console.error('Failed to fetch big matches:', error);
+        console.log('Failed to fetch big matches:', error);
       } finally {
         setLoading(false);
       }

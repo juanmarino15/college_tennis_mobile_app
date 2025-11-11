@@ -108,7 +108,7 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
       setHasMore(data.has_next);
       setError(null);
     } catch (err) {
-      console.error('Failed to fetch tournaments:', err);
+      console.log('Failed to fetch tournaments:', err);
       setError('Failed to load tournaments');
     } finally {
       setLoading(false);

@@ -110,7 +110,7 @@ const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
             // Explicitly cast the API's Match type to our MatchWithScore type
             allUpcomingMatches.push(...(upcoming as MatchWithScore[]));
           } catch (error) {
-            console.error(`Failed to fetch matches for team ${teamId}:`, error);
+            console.log(`Failed to fetch matches for team ${teamId}:`, error);
           }
         }
 
@@ -148,7 +148,7 @@ const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
                 const score = await api.matches.getScore(match.id);
                 match.score = score;
               } catch (error) {
-                console.error(
+                console.log(
                   `Failed to fetch score for match ${match.id}:`,
                   error,
                 );
@@ -157,7 +157,7 @@ const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
 
             allRecentResults.push(...recentWithScore);
           } catch (error) {
-            console.error(
+            console.log(
               `Failed to fetch recent results for team ${teamId}:`,
               error,
             );
@@ -177,7 +177,7 @@ const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
         );
         setTeamRankings(relevantRankings);
       } catch (error) {
-        console.error('Failed to fetch teams data:', error);
+        console.log('Failed to fetch teams data:', error);
       } finally {
         setLoading(false);
       }
@@ -340,11 +340,34 @@ const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
                   },
                 ]}
                 numberOfLines={1}>
-                {formatTeamName(team.name)}
+                {team.abbreviation || formatTeamName(team.name)}
               </Text>
               {ranking && (
                 <View style={styles.rankingBadge}>
                   <Text style={styles.rankingText}>#{ranking.rank}</Text>
+                </View>
+              )}
+              {team.gender && (
+                <View
+                  style={[
+                    styles.genderBadge,
+                    {
+                      backgroundColor: isDark
+                        ? theme.colors.gray[700]
+                        : theme.colors.gray[200],
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.genderText,
+                      {
+                        color: isDark
+                          ? theme.colors.text.dark
+                          : theme.colors.text.light,
+                      },
+                    ]}>
+                    {team.gender.charAt(0)}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -769,6 +792,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  genderBadge: {
+    position: 'absolute',
+    bottom: theme.spacing[1],
+    right: theme.spacing[1],
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing[1.5],
+    paddingVertical: theme.spacing[0.5],
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  genderText: {
+    fontSize: 9,
+    fontWeight: '600',
   },
   section: {
     marginTop: theme.spacing[4],

@@ -150,7 +150,7 @@ const RankingsScreen: React.FC = () => {
 
       setError(null);
     } catch (err) {
-      console.error('Error fetching ranking lists:', err);
+      console.log('Error fetching ranking lists:', err);
       setError('Failed to load ranking lists');
       setRankingLists([]);
       setSelectedRankingList(null);
@@ -186,7 +186,7 @@ const RankingsScreen: React.FC = () => {
 
       setError(null);
     } catch (err) {
-      console.error('Error fetching rankings:', err);
+      console.log('Error fetching rankings:', err);
       setError('Failed to load rankings');
       setTeamRankings([]);
       setPlayerRankings([]);

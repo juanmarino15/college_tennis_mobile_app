@@ -113,41 +113,53 @@ const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
         );
         setPlayersData(players);
 
-        // Fetch player teams
+        // Fetch player teams with season parameter
         const teams: Record<string, PlayerTeam> = {};
         for (const playerId of favoritePlayers) {
           try {
-            const team = await api.players.getTeam(playerId);
+            // Pass season '2025' to get current season data
+            const team = await api.players.getTeam(playerId, '2025');
             teams[playerId] = team;
-          } catch (error) {
-            console.error(
-              `Failed to fetch team for player ${playerId}:`,
-              error,
-            );
+          } catch (error: any) {
+            // Only log non-404 errors (404 is expected for players without current season data)
+            if (error?.response?.status !== 404) {
+              console.log(
+                `Failed to fetch team for player ${playerId}:`,
+                error,
+              );
+            }
           }
         }
         setPlayerTeams(teams);
 
-        // Fetch player stats
+        // Fetch player stats with season parameter
         const stats: Record<string, PlayerStats> = {};
         for (const playerId of favoritePlayers) {
           try {
-            const playerStats = await api.players.getStats(playerId);
+            // Pass season '2025' to get current season data
+            const playerStats = await api.players.getStats(playerId, '2025');
             stats[playerId] = playerStats;
-          } catch (error) {
-            console.error(
-              `Failed to fetch stats for player ${playerId}:`,
-              error,
-            );
+          } catch (error: any) {
+            // Only log non-404 errors
+            if (error?.response?.status !== 404) {
+              console.log(
+                `Failed to fetch stats for player ${playerId}:`,
+                error,
+              );
+            }
           }
         }
         setPlayerStats(stats);
 
-        // Fetch recent match results
+        // Fetch recent match results with season parameter
         const results: Record<string, PlayerMatchResult[]> = {};
         for (const playerId of favoritePlayers) {
           try {
-            const matchResults = await api.players.getMatchResults(playerId);
+            // Pass season '2025' to get current season data
+            const matchResults = await api.players.getMatchResults(
+              playerId,
+              '2025',
+            );
             // Sort by date (newest first) and take top 2
             results[playerId] = matchResults
               .sort(
@@ -155,16 +167,19 @@ const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
                   new Date(b.date).getTime() - new Date(a.date).getTime(),
               )
               .slice(0, 2);
-          } catch (error) {
-            console.error(
-              `Failed to fetch match results for player ${playerId}:`,
-              error,
-            );
+          } catch (error: any) {
+            // Only log non-404 errors
+            if (error?.response?.status !== 404) {
+              console.log(
+                `Failed to fetch match results for player ${playerId}:`,
+                error,
+              );
+            }
           }
         }
         setRecentResults(results);
       } catch (error) {
-        console.error('Failed to fetch players data:', error);
+        console.log('Failed to fetch players data:', error);
       } finally {
         setLoading(false);
       }
@@ -328,6 +343,7 @@ const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
                       <View style={styles.teamContainer}>
                         <TeamLogo teamId={team.team_id} size="small" />
                         <Text
+                          numberOfLines={2}
                           style={[
                             styles.teamName,
                             {
@@ -580,6 +596,7 @@ const styles = StyleSheet.create({
   },
   nameContainer: {
     marginLeft: theme.spacing[3],
+    flex: 1,
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
@@ -589,10 +606,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: theme.spacing[1],
+    flex: 1,
   },
   teamName: {
     fontSize: theme.typography.fontSize.sm,
     marginLeft: theme.spacing[1],
+    flex: 1,
   },
   statsContainer: {
     flexDirection: 'row',

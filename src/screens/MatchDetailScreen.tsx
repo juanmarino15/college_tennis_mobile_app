@@ -124,7 +124,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
       setPlayers(playersMap);
       setError(null);
     } catch (err) {
-      console.error('Error fetching match details:', err);
+      console.log('Error fetching match details:', err);
       setError('Failed to load match details. Please try again.');
     } finally {
       setLoading(false);
@@ -314,177 +314,177 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   }
 
   return (
-    <ScrollView
+    <View
       style={[
-        styles.container,
+        styles.mainContainer,
         {
           backgroundColor: isDark
             ? theme.colors.background.dark
             : theme.colors.background.light,
         },
-      ]}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[theme.colors.primary[500]]}
-          tintColor={theme.colors.primary[500]}
-        />
-      }>
-      {/* Match Header Card */}
+      ]}>
       <View
         style={[
-          styles.card,
+          styles.header,
           {
             backgroundColor: isDark
               ? theme.colors.card.dark
               : theme.colors.card.light,
-            marginTop: 70,
+            borderBottomColor: isDark
+              ? theme.colors.border.dark
+              : theme.colors.border.light,
           },
         ]}>
-        <View style={styles.teamsHeader}>
-          {/* Home Team */}
-          <View style={styles.teamColumn}>
-            <TeamLogo teamId={match.home_team_id} size="large" />
-            <Text
-              style={[
-                styles.teamName,
-                {
-                  color: isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.text.light,
-                },
-                match.is_conference_match && styles.conferenceTeam,
-              ]}>
-              {formatTeamName(teams.home.name)}
-            </Text>
-            {teams.home.conference && (
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}>
+          <Icon
+            name="arrow-left"
+            size={24}
+            color={isDark ? theme.colors.text.dark : theme.colors.text.light}
+          />
+        </TouchableOpacity>
+
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: isDark ? theme.colors.text.dark : theme.colors.text.light,
+            },
+          ]}>
+          Match Details
+        </Text>
+      </View>
+
+      <ScrollView
+        style={[
+          styles.container,
+          {
+            backgroundColor: isDark
+              ? theme.colors.background.dark
+              : theme.colors.background.light,
+          },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary[500]]}
+            tintColor={theme.colors.primary[500]}
+          />
+        }>
+        {/* Match Header Card */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDark
+                ? theme.colors.card.dark
+                : theme.colors.card.light,
+            },
+          ]}>
+          <View style={styles.teamsHeader}>
+            {/* Home Team */}
+            <View style={styles.teamColumn}>
+              <TeamLogo teamId={match.home_team_id} size="large" />
               <Text
                 style={[
-                  styles.conferenceText,
+                  styles.teamName,
                   {
                     color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[500],
+                      ? theme.colors.text.dark
+                      : theme.colors.text.light,
                   },
+                  match.is_conference_match && styles.conferenceTeam,
                 ]}>
-                {teams.home.conference.replace(/_/g, ' ')}
+                {formatTeamName(teams.home.name)}
               </Text>
-            )}
-          </View>
+              {teams.home.conference && (
+                <Text
+                  style={[
+                    styles.conferenceText,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[500],
+                    },
+                  ]}>
+                  {teams.home.conference.replace(/_/g, ' ')}
+                </Text>
+              )}
+            </View>
 
-          {/* Score/VS Section */}
-          <View style={styles.scoreSection}>
-            <Text
-              style={[
-                styles.scoreText,
-                {
-                  color: isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.text.light,
-                },
-              ]}>
-              {match.completed && matchScore
-                ? `${matchScore.home_team_score} - ${matchScore.away_team_score}`
-                : 'vs'}
-            </Text>
-            {match.completed ? (
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>Final</Text>
-              </View>
-            ) : match.scheduled_time ? (
+            {/* Score/VS Section */}
+            <View style={styles.scoreSection}>
               <Text
                 style={[
-                  styles.timeText,
+                  styles.scoreText,
                   {
                     color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[600],
+                      ? theme.colors.text.dark
+                      : theme.colors.text.light,
                   },
                 ]}>
-                {format(new Date(match.scheduled_time), 'h:mm a')}
+                {match.completed && matchScore
+                  ? `${matchScore.home_team_score} - ${matchScore.away_team_score}`
+                  : 'vs'}
               </Text>
-            ) : null}
-          </View>
+              {match.completed ? (
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>Final</Text>
+                </View>
+              ) : match.scheduled_time ? (
+                <Text
+                  style={[
+                    styles.timeText,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[600],
+                    },
+                  ]}>
+                  {format(new Date(match.scheduled_time), 'h:mm a')}
+                </Text>
+              ) : null}
+            </View>
 
-          {/* Away Team */}
-          <View style={styles.teamColumn}>
-            <TeamLogo teamId={match.away_team_id} size="large" />
-            <Text
-              style={[
-                styles.teamName,
-                {
-                  color: isDark
-                    ? theme.colors.text.dark
-                    : theme.colors.text.light,
-                },
-                match.is_conference_match && styles.conferenceTeam,
-              ]}>
-              {formatTeamName(teams.away.name)}
-            </Text>
-            {teams.away.conference && (
+            {/* Away Team */}
+            <View style={styles.teamColumn}>
+              <TeamLogo teamId={match.away_team_id} size="large" />
               <Text
                 style={[
-                  styles.conferenceText,
+                  styles.teamName,
                   {
                     color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[500],
+                      ? theme.colors.text.dark
+                      : theme.colors.text.light,
                   },
+                  match.is_conference_match && styles.conferenceTeam,
                 ]}>
-                {teams.away.conference.replace(/_/g, ' ')}
+                {formatTeamName(teams.away.name)}
               </Text>
-            )}
-          </View>
-        </View>
-
-        {/* Match Details Row */}
-        <View style={styles.detailsRow}>
-          <View style={styles.detailItem}>
-            <Icon
-              name="users"
-              size={16}
-              color={
-                isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
-              }
-            />
-            <Text
-              style={[
-                styles.detailText,
-                {
-                  color: isDark
-                    ? theme.colors.text.dimDark
-                    : theme.colors.gray[600],
-                },
-              ]}>
-              {match.gender === 'MALE' ? 'Men' : 'Women'}
-            </Text>
-          </View>
-          <View style={styles.detailItem}>
-            <Icon
-              name="calendar"
-              size={16}
-              color={
-                isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
-              }
-            />
-            <Text
-              style={[
-                styles.detailText,
-                {
-                  color: isDark
-                    ? theme.colors.text.dimDark
-                    : theme.colors.gray[600],
-                },
-              ]}>
-              {format(new Date(match.start_date), 'EEEE, MMMM d, yyyy')}
-            </Text>
+              {teams.away.conference && (
+                <Text
+                  style={[
+                    styles.conferenceText,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[500],
+                    },
+                  ]}>
+                  {teams.away.conference.replace(/_/g, ' ')}
+                </Text>
+              )}
+            </View>
           </View>
 
-          {match.scheduled_time && (
+          {/* Match Details Row */}
+          <View style={styles.detailsRow}>
             <View style={styles.detailItem}>
               <Icon
-                name="clock"
+                name="users"
                 size={16}
                 color={
                   isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
@@ -499,333 +499,131 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       : theme.colors.gray[600],
                   },
                 ]}>
-                {format(new Date(match.scheduled_time), 'h:mm a')}
+                {match.gender === 'MALE' ? 'Men' : 'Women'}
               </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Icon
+                name="calendar"
+                size={16}
+                color={
+                  isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
+                }
+              />
+              <Text
+                style={[
+                  styles.detailText,
+                  {
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                {format(new Date(match.start_date), 'EEEE, MMMM d, yyyy')}
+              </Text>
+            </View>
+
+            {match.scheduled_time && (
+              <View style={styles.detailItem}>
+                <Icon
+                  name="clock"
+                  size={16}
+                  color={
+                    isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
+                  }
+                />
+                <Text
+                  style={[
+                    styles.detailText,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dimDark
+                        : theme.colors.gray[600],
+                    },
+                  ]}>
+                  {format(new Date(match.scheduled_time), 'h:mm a')}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {match.is_conference_match && (
+            <View style={styles.conferenceMatchTag}>
+              <Text style={styles.conferenceMatchText}>Conference Match</Text>
             </View>
           )}
         </View>
 
-        {match.is_conference_match && (
-          <View style={styles.conferenceMatchTag}>
-            <Text style={styles.conferenceMatchText}>Conference Match</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Match Results */}
-      {match.completed && lineup.length > 0 && (
-        <View style={styles.resultsContainer}>
-          {/* Doubles Section */}
-          {doublesMatches.length > 0 && (
-            <View
-              style={[
-                styles.card,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.card.dark
-                    : theme.colors.card.light,
-                },
-              ]}>
-              <Text
+        {/* Match Results */}
+        {match.completed && lineup.length > 0 && (
+          <View style={styles.resultsContainer}>
+            {/* Doubles Section */}
+            {doublesMatches.length > 0 && (
+              <View
                 style={[
-                  styles.sectionTitle,
+                  styles.card,
                   {
-                    color: isDark
-                      ? theme.colors.text.dark
-                      : theme.colors.text.light,
+                    backgroundColor: isDark
+                      ? theme.colors.card.dark
+                      : theme.colors.card.light,
                   },
                 ]}>
-                Doubles
-              </Text>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dark
+                        : theme.colors.text.light,
+                    },
+                  ]}>
+                  Doubles
+                </Text>
 
-              <View style={styles.matchesList}>
-                {doublesMatches.map(match => (
-                  <View
-                    key={match.id}
-                    style={[
-                      styles.matchItem,
-                      {
-                        borderColor: isDark
-                          ? theme.colors.border.dark
-                          : theme.colors.border.light,
-                      },
-                    ]}>
-                    <View style={styles.matchHeader}>
-                      <View
-                        style={[
-                          styles.matchNumberBadge,
-                          {
-                            backgroundColor: isDark
-                              ? theme.colors.gray[800]
-                              : theme.colors.gray[100],
-                          },
-                        ]}>
-                        <Text
-                          style={[
-                            styles.matchNumberText,
-                            {
-                              color: isDark
-                                ? theme.colors.text.dark
-                                : theme.colors.gray[700],
-                            },
-                          ]}>
-                          Match #{match.position}
-                        </Text>
-                      </View>
-
-                      {/* UF Tag - if match is unfinished */}
-                      {!match.side1_won && !match.side2_won && (
-                        <View style={styles.unfinishedTag}>
-                          <Text style={styles.unfinishedText}>DNF</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Home Team Players */}
+                <View style={styles.matchesList}>
+                  {doublesMatches.map(match => (
                     <View
+                      key={match.id}
                       style={[
-                        styles.playerRow,
-                        match.side1_won && styles.winnerRow,
+                        styles.matchItem,
+                        {
+                          borderColor: isDark
+                            ? theme.colors.border.dark
+                            : theme.colors.border.light,
+                        },
                       ]}>
-                      <View style={styles.playerInfo}>
-                        <Icon
-                          name="user"
-                          size={14}
-                          color={
-                            match.side1_won
-                              ? theme.colors.success
-                              : theme.colors.white
-                          }
-                        />
-                        <Text
+                      <View style={styles.matchHeader}>
+                        <View
                           style={[
-                            styles.playerText,
+                            styles.matchNumberBadge,
                             {
-                              color: match.side1_won
-                                ? theme.colors.success
-                                : theme.colors.white,
+                              backgroundColor: isDark
+                                ? theme.colors.gray[800]
+                                : theme.colors.gray[100],
                             },
                           ]}>
-                          {formatPlayerName(players[match.side1_player1_id])} [
-                          {match.side1_name}]
-                        </Text>
-                        {match.side1_won && (
-                          <Icon
-                            name="check"
-                            size={14}
-                            color={theme.colors.success}
-                            style={styles.checkIcon}
-                          />
-                        )}
-                      </View>
-
-                      {/* Enhanced score display */}
-                      <View style={styles.setScores}>
-                        {match.side1_score &&
-                        typeof match.side1_score === 'string' ? (
-                          parseScoreSets(match.side1_score).map(
-                            (set, index) => (
-                              <View
-                                key={index}
-                                style={styles.setScoreContainer}>
-                                <View
-                                  style={{
-                                    height: 24, // Fixed height for consistency
-                                    justifyContent: 'center', // Center the text vertically
-                                  }}>
-                                  <Text
-                                    style={[
-                                      styles.scoreValue,
-                                      {
-                                        color: match.side1_won
-                                          ? theme.colors.success
-                                          : theme.colors.white,
-                                      },
-                                    ]}>
-                                    {set.score1}
-                                  </Text>
-                                  {set.tiebreak &&
-                                    set.tiebreakBelongsToScore1 && (
-                                      <Text
-                                        style={[
-                                          styles.tiebreakValue,
-                                          {
-                                            position: 'absolute', // Position absolutely
-                                            top: 0, // Align to top
-                                            right: -8, // Offset to the right
-                                            color: match.side1_won
-                                              ? theme.colors.success
-                                              : theme.colors.white,
-                                          },
-                                        ]}>
-                                        {set.tiebreak}
-                                      </Text>
-                                    )}
-                                </View>
-                              </View>
-                            ),
-                          )
-                        ) : (
-                          <Text style={styles.setScore}>N/A</Text>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Away Team Players */}
-                    <View
-                      style={[
-                        styles.playerRow,
-                        match.side2_won && styles.winnerRow,
-                      ]}>
-                      <View style={styles.playerInfo}>
-                        <Icon
-                          name="user"
-                          size={14}
-                          color={
-                            match.side2_won
-                              ? theme.colors.success
-                              : theme.colors.white
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.playerText,
-                            {
-                              color: match.side2_won
-                                ? theme.colors.success
-                                : theme.colors.white,
-                            },
-                          ]}>
-                          {formatPlayerName(players[match.side2_player1_id])} [
-                          {match.side2_name}]
-                        </Text>
-                        {match.side2_won && (
-                          <Icon
-                            name="check"
-                            size={14}
-                            color={theme.colors.success}
-                            style={styles.checkIcon}
-                          />
-                        )}
-                      </View>
-
-                      {/* Enhanced score display */}
-                      <View style={styles.setScores}>
-                        {match.side1_score &&
-                        typeof match.side1_score === 'string' ? (
-                          parseScoreSets(match.side1_score).map(
-                            (set, index) => (
-                              <View
-                                key={index}
-                                style={styles.setScoreContainer}>
-                                <Text
-                                  style={[
-                                    styles.scoreValue,
-                                    {
-                                      color: match.side2_won
-                                        ? theme.colors.success
-                                        : theme.colors.white,
-                                    },
-                                  ]}>
-                                  {set.score2}
-                                </Text>
-                                {set.tiebreak &&
-                                  set.tiebreakBelongsToScore2 && (
-                                    <Text
-                                      style={[
-                                        styles.tiebreakValue,
-                                        {
-                                          color: match.side2_won
-                                            ? theme.colors.success
-                                            : theme.colors.white,
-                                        },
-                                      ]}>
-                                      {set.tiebreak}
-                                    </Text>
-                                  )}
-                              </View>
-                            ),
-                          )
-                        ) : (
-                          <Text style={styles.setScore}>N/A</Text>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Singles Section */}
-          {singlesMatches.length > 0 && (
-            <View
-              style={[
-                styles.card,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.card.dark
-                    : theme.colors.card.light,
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.sectionTitle,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dark
-                      : theme.colors.text.light,
-                  },
-                ]}>
-                Singles
-              </Text>
-
-              <View style={styles.matchesList}>
-                {singlesMatches.map(match => (
-                  <View
-                    key={match.id}
-                    style={[
-                      styles.matchItem,
-                      {
-                        borderColor: isDark
-                          ? theme.colors.border.dark
-                          : theme.colors.border.light,
-                      },
-                    ]}>
-                    <View style={styles.matchHeader}>
-                      <View
-                        style={[
-                          styles.matchNumberBadge,
-                          {
-                            backgroundColor: isDark
-                              ? theme.colors.gray[800]
-                              : theme.colors.gray[100],
-                          },
-                        ]}>
-                        <Text
-                          style={[
-                            styles.matchNumberText,
-                            {
-                              color: isDark
-                                ? theme.colors.text.dark
-                                : theme.colors.gray[700],
-                            },
-                          ]}>
-                          Match #{match.position}
-                        </Text>
-                      </View>
-
-                      {/* UF Tag - if match is unfinished */}
-                      {!match.side1_won && !match.side2_won && (
-                        <View style={styles.unfinishedTag}>
-                          <Text style={styles.unfinishedText}>DNF</Text>
+                          <Text
+                            style={[
+                              styles.matchNumberText,
+                              {
+                                color: isDark
+                                  ? theme.colors.text.dark
+                                  : theme.colors.gray[700],
+                              },
+                            ]}>
+                            Match #{match.position}
+                          </Text>
                         </View>
-                      )}
-                    </View>
 
-                    {/* Parse and display the scores with tiebreaks */}
-                    <>
-                      {/* Home Player */}
+                        {/* UF Tag - if match is unfinished */}
+                        {!match.side1_won && !match.side2_won && (
+                          <View style={styles.unfinishedTag}>
+                            <Text style={styles.unfinishedText}>DNF</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Home Team Players */}
                       <View
                         style={[
                           styles.playerRow,
@@ -850,7 +648,11 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                   : theme.colors.white,
                               },
                             ]}>
-                            {formatPlayerName(players[match.side1_player1_id])}{' '}
+                            {formatPlayerName(players[match.side1_player1_id])}
+                            {match.side1_player2_id &&
+                              ` / ${formatPlayerName(
+                                players[match.side1_player2_id],
+                              )}`}{' '}
                             [{match.side1_name}]
                           </Text>
                           {match.side1_won && (
@@ -863,7 +665,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           )}
                         </View>
 
-                        {/* Enhanced score display with tiebreak support */}
+                        {/* Enhanced score display */}
                         <View style={styles.setScores}>
                           {match.side1_score &&
                           typeof match.side1_score === 'string' ? (
@@ -872,31 +674,40 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                 <View
                                   key={index}
                                   style={styles.setScoreContainer}>
-                                  <Text
-                                    style={[
-                                      styles.scoreValue,
-                                      {
-                                        color: match.side1_won
-                                          ? theme.colors.success
-                                          : theme.colors.white,
-                                      },
-                                    ]}>
-                                    {set.score1}
-                                  </Text>
-                                  {set.tiebreak &&
-                                    set.tiebreakBelongsToScore1 && (
-                                      <Text
-                                        style={[
-                                          styles.tiebreakValue,
-                                          {
-                                            color: match.side1_won
-                                              ? theme.colors.success
-                                              : theme.colors.white,
-                                          },
-                                        ]}>
-                                        {set.tiebreak}
-                                      </Text>
-                                    )}
+                                  <View
+                                    style={{
+                                      height: 24, // Fixed height for consistency
+                                      justifyContent: 'center', // Center the text vertically
+                                    }}>
+                                    <Text
+                                      style={[
+                                        styles.scoreValue,
+                                        {
+                                          color: match.side1_won
+                                            ? theme.colors.success
+                                            : theme.colors.white,
+                                        },
+                                      ]}>
+                                      {set.score1}
+                                    </Text>
+                                    {set.tiebreak &&
+                                      set.tiebreakBelongsToScore1 && (
+                                        <Text
+                                          style={[
+                                            styles.tiebreakValue,
+                                            {
+                                              position: 'absolute', // Position absolutely
+                                              top: 0, // Align to top
+                                              right: -8, // Offset to the right
+                                              color: match.side1_won
+                                                ? theme.colors.success
+                                                : theme.colors.white,
+                                            },
+                                          ]}>
+                                          {set.tiebreak}
+                                        </Text>
+                                      )}
+                                  </View>
                                 </View>
                               ),
                             )
@@ -906,7 +717,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                         </View>
                       </View>
 
-                      {/* Away Player */}
+                      {/* Away Team Players */}
                       <View
                         style={[
                           styles.playerRow,
@@ -931,7 +742,11 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                   : theme.colors.white,
                               },
                             ]}>
-                            {formatPlayerName(players[match.side2_player1_id])}{' '}
+                            {formatPlayerName(players[match.side2_player1_id])}
+                            {match.side2_player2_id &&
+                              ` / ${formatPlayerName(
+                                players[match.side2_player2_id],
+                              )}`}{' '}
                             [{match.side2_name}]
                           </Text>
                           {match.side2_won && (
@@ -944,7 +759,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           )}
                         </View>
 
-                        {/* Enhanced score display with tiebreak support */}
+                        {/* Enhanced score display */}
                         <View style={styles.setScores}>
                           {match.side1_score &&
                           typeof match.side1_score === 'string' ? (
@@ -986,75 +801,341 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                           )}
                         </View>
                       </View>
-                    </>
-                  </View>
-                ))}
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
-        </View>
-      )}
+            )}
 
-      {/* No lineup message for completed matches */}
-      {match.completed && lineup.length === 0 && (
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: isDark
-                ? theme.colors.card.dark
-                : theme.colors.card.light,
-            },
-          ]}>
-          <Text
+            {/* Singles Section */}
+            {singlesMatches.length > 0 && (
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.card.dark
+                      : theme.colors.card.light,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    {
+                      color: isDark
+                        ? theme.colors.text.dark
+                        : theme.colors.text.light,
+                    },
+                  ]}>
+                  Singles
+                </Text>
+
+                <View style={styles.matchesList}>
+                  {singlesMatches.map(match => (
+                    <View
+                      key={match.id}
+                      style={[
+                        styles.matchItem,
+                        {
+                          borderColor: isDark
+                            ? theme.colors.border.dark
+                            : theme.colors.border.light,
+                        },
+                      ]}>
+                      <View style={styles.matchHeader}>
+                        <View
+                          style={[
+                            styles.matchNumberBadge,
+                            {
+                              backgroundColor: isDark
+                                ? theme.colors.gray[800]
+                                : theme.colors.gray[100],
+                            },
+                          ]}>
+                          <Text
+                            style={[
+                              styles.matchNumberText,
+                              {
+                                color: isDark
+                                  ? theme.colors.text.dark
+                                  : theme.colors.gray[700],
+                              },
+                            ]}>
+                            Match #{match.position}
+                          </Text>
+                        </View>
+
+                        {/* UF Tag - if match is unfinished */}
+                        {!match.side1_won && !match.side2_won && (
+                          <View style={styles.unfinishedTag}>
+                            <Text style={styles.unfinishedText}>DNF</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Parse and display the scores with tiebreaks */}
+                      <>
+                        {/* Home Player */}
+                        <View
+                          style={[
+                            styles.playerRow,
+                            match.side1_won && styles.winnerRow,
+                          ]}>
+                          <View style={styles.playerInfo}>
+                            <Icon
+                              name="user"
+                              size={14}
+                              color={
+                                match.side1_won
+                                  ? theme.colors.success
+                                  : theme.colors.white
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.playerText,
+                                {
+                                  color: match.side1_won
+                                    ? theme.colors.success
+                                    : theme.colors.white,
+                                },
+                              ]}>
+                              {formatPlayerName(
+                                players[match.side1_player1_id],
+                              )}{' '}
+                              [{match.side1_name}]
+                            </Text>
+                            {match.side1_won && (
+                              <Icon
+                                name="check"
+                                size={14}
+                                color={theme.colors.success}
+                                style={styles.checkIcon}
+                              />
+                            )}
+                          </View>
+
+                          {/* Enhanced score display with tiebreak support */}
+                          <View style={styles.setScores}>
+                            {match.side1_score &&
+                            typeof match.side1_score === 'string' ? (
+                              parseScoreSets(match.side1_score).map(
+                                (set, index) => (
+                                  <View
+                                    key={index}
+                                    style={styles.setScoreContainer}>
+                                    <Text
+                                      style={[
+                                        styles.scoreValue,
+                                        {
+                                          color: match.side1_won
+                                            ? theme.colors.success
+                                            : theme.colors.white,
+                                        },
+                                      ]}>
+                                      {set.score1}
+                                    </Text>
+                                    {set.tiebreak &&
+                                      set.tiebreakBelongsToScore1 && (
+                                        <Text
+                                          style={[
+                                            styles.tiebreakValue,
+                                            {
+                                              color: match.side1_won
+                                                ? theme.colors.success
+                                                : theme.colors.white,
+                                            },
+                                          ]}>
+                                          {set.tiebreak}
+                                        </Text>
+                                      )}
+                                  </View>
+                                ),
+                              )
+                            ) : (
+                              <Text style={styles.setScore}>N/A</Text>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Away Player */}
+                        <View
+                          style={[
+                            styles.playerRow,
+                            match.side2_won && styles.winnerRow,
+                          ]}>
+                          <View style={styles.playerInfo}>
+                            <Icon
+                              name="user"
+                              size={14}
+                              color={
+                                match.side2_won
+                                  ? theme.colors.success
+                                  : theme.colors.white
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.playerText,
+                                {
+                                  color: match.side2_won
+                                    ? theme.colors.success
+                                    : theme.colors.white,
+                                },
+                              ]}>
+                              {formatPlayerName(
+                                players[match.side2_player1_id],
+                              )}{' '}
+                              [{match.side2_name}]
+                            </Text>
+                            {match.side2_won && (
+                              <Icon
+                                name="check"
+                                size={14}
+                                color={theme.colors.success}
+                                style={styles.checkIcon}
+                              />
+                            )}
+                          </View>
+
+                          {/* Enhanced score display with tiebreak support */}
+                          <View style={styles.setScores}>
+                            {match.side1_score &&
+                            typeof match.side1_score === 'string' ? (
+                              parseScoreSets(match.side1_score).map(
+                                (set, index) => (
+                                  <View
+                                    key={index}
+                                    style={styles.setScoreContainer}>
+                                    <Text
+                                      style={[
+                                        styles.scoreValue,
+                                        {
+                                          color: match.side2_won
+                                            ? theme.colors.success
+                                            : theme.colors.white,
+                                        },
+                                      ]}>
+                                      {set.score2}
+                                    </Text>
+                                    {set.tiebreak &&
+                                      set.tiebreakBelongsToScore2 && (
+                                        <Text
+                                          style={[
+                                            styles.tiebreakValue,
+                                            {
+                                              color: match.side2_won
+                                                ? theme.colors.success
+                                                : theme.colors.white,
+                                            },
+                                          ]}>
+                                          {set.tiebreak}
+                                        </Text>
+                                      )}
+                                  </View>
+                                ),
+                              )
+                            ) : (
+                              <Text style={styles.setScore}>N/A</Text>
+                            )}
+                          </View>
+                        </View>
+                      </>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* No lineup message for completed matches */}
+        {match.completed && lineup.length === 0 && (
+          <View
             style={[
-              styles.centerText,
+              styles.card,
               {
-                color: isDark
-                  ? theme.colors.text.dimDark
-                  : theme.colors.gray[600],
+                backgroundColor: isDark
+                  ? theme.colors.card.dark
+                  : theme.colors.card.light,
               },
             ]}>
-            Lineup details are not available for this match.
-          </Text>
-        </View>
-      )}
+            <Text
+              style={[
+                styles.centerText,
+                {
+                  color: isDark
+                    ? theme.colors.text.dimDark
+                    : theme.colors.gray[600],
+                },
+              ]}>
+              Lineup details are not available for this match.
+            </Text>
+          </View>
+        )}
 
-      {/* Match not yet completed message */}
-      {!match.completed && (
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: isDark
-                ? theme.colors.card.dark
-                : theme.colors.card.light,
-            },
-          ]}>
-          <Text
+        {/* Match not yet completed message */}
+        {!match.completed && (
+          <View
             style={[
-              styles.centerText,
+              styles.card,
               {
-                color: isDark
-                  ? theme.colors.text.dimDark
-                  : theme.colors.gray[600],
-                padding: 24,
-                lineHeight: 24,
-                marginHorizontal: 16,
+                backgroundColor: isDark
+                  ? theme.colors.card.dark
+                  : theme.colors.card.light,
               },
             ]}>
-            This match has not been completed yet. Check back later for results.
-          </Text>
-        </View>
-      )}
+            <Text
+              style={[
+                styles.centerText,
+                {
+                  color: isDark
+                    ? theme.colors.text.dimDark
+                    : theme.colors.gray[600],
+                  padding: 24,
+                  lineHeight: 24,
+                  marginHorizontal: 16,
+                },
+              ]}>
+              This match has not been completed yet. Check back later for
+              results.
+            </Text>
+          </View>
+        )}
 
-      {/* Bottom padding for better scrolling */}
-      <View style={styles.bottomPadding} />
-    </ScrollView>
+        {/* Bottom padding for better scrolling */}
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    position: 'relative',
+  },
+  headerBackButton: {
+    padding: 8,
+    position: 'absolute',
+    left: 16,
+    top: 50,
+    zIndex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
   container: {
     flex: 1,
   },

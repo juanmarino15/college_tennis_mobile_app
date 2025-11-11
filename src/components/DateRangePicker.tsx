@@ -96,7 +96,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         )}`;
       }
     } catch (error) {
-      console.error('Error formatting date:', error);
+      console.log('Error formatting date:', error);
       return 'Select Date';
     }
   };

@@ -454,7 +454,7 @@ const RankingHistoryChart: React.FC<RankingHistoryProps> = ({
                 : theme.colors.gray[500],
             },
           ]}>
-          {selectedSeason}-{parseInt(selectedSeason) + 1} season rankings
+          {selectedSeason} season rankings
         </Text>
       </View>
     </View>
