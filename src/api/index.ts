@@ -4,9 +4,10 @@ import type {AxiosResponse} from 'axios';
 import {Alert} from 'react-native';
 import cacheService from '../services/cacheService';
 
-// Base URL should come from environment config
-// const BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
-const BASE_URL = 'http://localhost:8000/api/v1';
+// Release builds always talk to production; debug builds use the local API
+const PROD_BASE_URL = 'https://shark-app-bei8p.ondigitalocean.app/api/v1';
+const DEV_BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = __DEV__ ? DEV_BASE_URL : PROD_BASE_URL;
 
 // API response interfaces
 export interface Team {
@@ -340,6 +341,29 @@ const apiClient = axios.create({
   },
 });
 
+// Screens fire many requests in parallel; show at most one alert every few
+// seconds instead of stacking a dialog per failed request
+const ALERT_COOLDOWN_MS = 5000;
+let lastAlertAt = 0;
+let alertVisible = false;
+const showAlert = (title: string, message: string) => {
+  const now = Date.now();
+  if (alertVisible || now - lastAlertAt < ALERT_COOLDOWN_MS) {
+    return;
+  }
+  alertVisible = true;
+  lastAlertAt = now;
+  const dismissed = () => {
+    alertVisible = false;
+    lastAlertAt = Date.now();
+  };
+  Alert.alert(title, message, [{text: 'OK', onPress: dismissed}], {
+    onDismiss: dismissed,
+  });
+};
+
+const SCORE_BATCH_SIZE = 50; // backend limit per /batch/match-scores request
+
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   response => response,
@@ -363,36 +387,26 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Don't show alerts for empty responses (common when no season data)
-      if (
-        response.status === 200 &&
-        (!response.data ||
-          (Array.isArray(response.data) && response.data.length === 0))
-      ) {
-        console.log('Empty data received:', url);
-        return Promise.reject(error);
-      }
-
       // Only show alerts for actual unexpected errors
       if (response.status >= 500 && !url.includes('/positions')) {
-        Alert.alert(
+        showAlert(
           'Server Error',
           'Something went wrong on our end. Please try again later.',
         );
       } else if (response.status === 401) {
-        Alert.alert('Unauthorized', 'Please log in to continue.');
+        showAlert('Unauthorized', 'Please log in to continue.');
       } else if (response.status === 403) {
-        Alert.alert(
+        showAlert(
           'Access Denied',
           "You don't have permission to access this resource.",
         );
       } else if (response.status === 400) {
         const errorMessage = response.data?.message || 'Invalid request';
-        Alert.alert('Error', errorMessage);
+        showAlert('Error', errorMessage);
       }
     } else if (error.request) {
       // Only show network errors
-      Alert.alert(
+      showAlert(
         'Network Error',
         'Unable to connect to the server. Please check your internet connection.',
       );
@@ -450,6 +464,36 @@ export const api = {
           return response.data;
         },
       );
+    },
+
+    /**
+     * Scores for many matches. Uses the batch endpoint and falls back to one
+     * request per match if it's unavailable. Matches without a score are left
+     * out instead of failing the whole call.
+     */
+    getScores: async (ids: string[]): Promise<Record<string, MatchScore>> => {
+      const scores: Record<string, MatchScore> = {};
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += SCORE_BATCH_SIZE) {
+        chunks.push(ids.slice(i, i + SCORE_BATCH_SIZE));
+      }
+      await Promise.all(
+        chunks.map(async chunk => {
+          try {
+            Object.assign(scores, await api.batch.getMatchScores(chunk));
+          } catch {
+            const results = await Promise.allSettled(
+              chunk.map(id => api.matches.getScore(id)),
+            );
+            results.forEach((result, index) => {
+              if (result.status === 'fulfilled' && result.value) {
+                scores[chunk[index]] = result.value;
+              }
+            });
+          }
+        }),
+      );
+      return scores;
     },
 
     getAllByTeam: async (teamId: string, season?: string): Promise<Match[]> => {
@@ -771,6 +815,13 @@ export const api = {
           return response.data;
         },
       );
+    },
+
+    // The season covering today, as decided by the backend's seasons table
+    getCurrent: async (): Promise<Season & {year: string}> => {
+      const response: AxiosResponse<Season & {year: string}> =
+        await apiClient.get('/seasons/current');
+      return response.data;
     },
 
     getByName: async (name: string): Promise<Season | null> => {

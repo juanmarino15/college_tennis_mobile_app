@@ -1,5 +1,5 @@
 // src/screens/RankingsScreen.tsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
+import cacheService from '../services/cacheService';
 
 // Define the types
 interface RankingList {
@@ -122,8 +123,14 @@ const RankingsScreen: React.FC = () => {
     return 'Unknown date';
   };
 
+  // Ignore responses from requests that were superseded (e.g. quick filter changes)
+  const listsFetchIdRef = useRef(0);
+  const rankingsFetchIdRef = useRef(0);
+
   // Fetch ranking lists based on current selections
   const fetchRankingLists = async () => {
+    const fetchId = ++listsFetchIdRef.current;
+    const isStale = () => fetchId !== listsFetchIdRef.current;
     try {
       setLoading(true);
       let lists: any = [];
@@ -134,7 +141,9 @@ const RankingsScreen: React.FC = () => {
         lists = await api.rankings.getSinglesRankingLists(divisionType, gender);
       } else if (matchFormat === 'DOUBLES') {
         lists = await api.rankings.getDoublesRankingLists(divisionType, gender);
-        console.log(lists);
+      }
+      if (isStale()) {
+        return;
       }
 
       setRankingLists(lists);
@@ -150,35 +159,49 @@ const RankingsScreen: React.FC = () => {
 
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching ranking lists:', err);
       setError('Failed to load ranking lists');
       setRankingLists([]);
       setSelectedRankingList(null);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
   // Fetch rankings for the selected list
   const fetchRankings = async (rankingListId: string) => {
+    const fetchId = ++rankingsFetchIdRef.current;
+    const isStale = () => fetchId !== rankingsFetchIdRef.current;
     try {
       setLoading(true);
 
       if (matchFormat === 'TEAM') {
         const data = await api.rankings.getTeamRankings(rankingListId);
+        if (isStale()) {
+          return;
+        }
         setTeamRankings(data);
         setPlayerRankings([]);
         setDoublesRankings([]);
       } else if (matchFormat === 'SINGLES') {
         const data = await api.rankings.getSinglesRankings(rankingListId);
+        if (isStale()) {
+          return;
+        }
         setPlayerRankings(data);
         setTeamRankings([]);
         setDoublesRankings([]);
       } else if (matchFormat === 'DOUBLES') {
-        console.log(rankingListId);
         const data: any = await api.rankings.getDoublesRankings(rankingListId);
-        console.log(data);
+        if (isStale()) {
+          return;
+        }
         setDoublesRankings(data);
         setTeamRankings([]);
         setPlayerRankings([]);
@@ -186,13 +209,18 @@ const RankingsScreen: React.FC = () => {
 
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching rankings:', err);
       setError('Failed to load rankings');
       setTeamRankings([]);
       setPlayerRankings([]);
       setDoublesRankings([]);
     } finally {
-      setLoading(false);
+      if (!isStale()) {
+        setLoading(false);
+      }
     }
   };
 
@@ -204,6 +232,7 @@ const RankingsScreen: React.FC = () => {
   // Handle refreshing
   const handleRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchRankingLists();
   };
 

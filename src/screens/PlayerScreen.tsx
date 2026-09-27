@@ -1,5 +1,5 @@
 // src/screens/PlayerScreen.tsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
 import PositionBarChart from '../components/PositionBarChart';
 import RankingHistoryChart from '../components/RankingHistoryChart';
+import {getRecentSeasons} from '../utils/season';
+import cacheService from '../services/cacheService';
 
 // Define navigation props
 type RootStackParamList = {
@@ -159,132 +161,109 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     setDropdownVisible(false);
   };
 
+  // Ignore responses from requests that were superseded (e.g. quick season changes)
+  const fetchIdRef = useRef(0);
+
   // Fetch player data
   const fetchPlayerData = async () => {
+    const fetchId = ++fetchIdRef.current;
+    const isStale = () => fetchId !== fetchIdRef.current;
     try {
       setLoading(true);
       setHasSeasonData(true); // Reset before checking
       let seasonDataFound = false;
+      const seasonYear = extractSeasonYear(selectedSeason);
+      const seasonId = seasonsData[selectedSeason];
 
-      // Fetch player details (this should always work - not season dependent)
-      const playerData = await api.players.getById(playerId);
-      setPlayer(playerData);
+      // Player details are required; everything else is per-season and optional.
+      // All requests run in parallel.
+      const [
+        playerResult,
+        teamResult,
+        wtnResult,
+        matchesResult,
+        positionsResult,
+        rankingResult,
+      ] = await Promise.allSettled([
+        api.players.getById(playerId),
+        fetchPlayerTeam(playerId, seasonYear),
+        api.players.getWTN(playerId, seasonId ? selectedSeason : undefined),
+        fetchPlayerMatches(playerId, seasonYear),
+        api.players.getPositions(playerId, seasonYear),
+        api.rankings.getPlayerSinglesHistory(playerId),
+      ]);
+      if (isStale()) {
+        return;
+      }
+      if (playerResult.status === 'rejected') {
+        throw playerResult.reason;
+      }
+      setPlayer(playerResult.value);
 
-      // Find player's team
-      try {
-        console.log(
-          'Fetching team - playerId:',
-          playerId,
-          'selectedSeason:',
-          selectedSeason,
-        );
-        const seasonYear = extractSeasonYear(selectedSeason);
-        const teamData: any = await fetchPlayerTeam(playerId, seasonYear);
-        console.log('Team data received:', teamData); // ADD THIS LINE
-        console.log('Class year from team data:', teamData?.class_year); // ADD THIS LINE
-        setPlayerTeam(teamData);
-        console.log(teamData);
-        if (teamData) seasonDataFound = true;
-      } catch (err) {
-        console.log('No team data for this season');
-        setPlayerTeam(null);
+      const teamData: any =
+        teamResult.status === 'fulfilled' ? teamResult.value : null;
+      setPlayerTeam(teamData);
+      if (teamData) {
+        seasonDataFound = true;
       }
 
-      // Fetch WTN data
-      try {
-        const seasonId = seasonsData[selectedSeason];
-        const wtnResult = await api.players.getWTN(
-          playerId,
-          seasonId ? selectedSeason : undefined,
-        );
-        setWtnData(wtnResult || []);
-        if (wtnResult && wtnResult.length > 0) seasonDataFound = true;
-      } catch (err) {
-        console.log('No WTN data for this season');
-        setWtnData([]);
+      const wtn = wtnResult.status === 'fulfilled' ? wtnResult.value : null;
+      setWtnData(wtn || []);
+      if (wtn && wtn.length > 0) {
+        seasonDataFound = true;
       }
 
-      // Fetch player match results
-      try {
-        const seasonYear = extractSeasonYear(selectedSeason);
-        const results: any = await fetchPlayerMatches(playerId, seasonYear);
-        setMatchResults(results);
-        setFilteredMatches(results);
-        setCalculatedStats(calculateStatsFromFilteredMatches(results));
-        if (results && results.length > 0) seasonDataFound = true;
-      } catch (err) {
-        console.log('No match results for this season');
-        setMatchResults([]);
-        setFilteredMatches([]);
-        setCalculatedStats({
-          singles_wins: 0,
-          singles_losses: 0,
-          singles_win_pct: 0,
-          doubles_wins: 0,
-          doubles_losses: 0,
-          doubles_win_pct: 0,
-          wtn_singles: null,
-          wtn_doubles: null,
-        });
+      const results: any =
+        matchesResult.status === 'fulfilled' ? matchesResult.value || [] : [];
+      setMatchResults(results);
+      setFilteredMatches(results);
+      setCalculatedStats(calculateStatsFromFilteredMatches(results));
+      if (results.length > 0) {
+        seasonDataFound = true;
       }
 
-      // Fetch position data
-      try {
-        const seasonYear = extractSeasonYear(selectedSeason);
-        const posData = await api.players.getPositions(playerId, seasonYear);
-        setPositionsData(posData);
-        if (
-          posData &&
-          (posData.singles?.length > 0 || posData.doubles?.length > 0)
-        ) {
-          seasonDataFound = true;
-        }
-      } catch (err) {
-        console.log('No position data for this season');
-        setPositionsData(null);
+      const posData =
+        positionsResult.status === 'fulfilled' ? positionsResult.value : null;
+      setPositionsData(posData);
+      if (
+        posData &&
+        (posData.singles?.length > 0 || posData.doubles?.length > 0)
+      ) {
+        seasonDataFound = true;
       }
 
-      // Fetch player ranking history
-      try {
-        const rankingHistory = await api.rankings.getPlayerSinglesHistory(
-          playerId,
-        );
-        console.log('Full player ranking history:', rankingHistory);
+      const rankingHistory =
+        rankingResult.status === 'fulfilled' ? rankingResult.value : null;
+      const seasonRankings = (rankingHistory || []).filter((ranking: any) => {
+        const rankingDate = new Date(ranking.publish_date);
+        const rankingYear = rankingDate.getFullYear();
+        const rankingMonth = rankingDate.getMonth();
 
-        if (rankingHistory && rankingHistory.length > 0) {
-          const targetSeasonYear = extractSeasonYear(selectedSeason);
-          const seasonRankings = rankingHistory.filter((ranking: any) => {
-            const rankingDate = new Date(ranking.publish_date);
-            const rankingYear = rankingDate.getFullYear();
-            const rankingMonth = rankingDate.getMonth();
-
-            // Determine which season this ranking belongs to
-            const seasonYear =
-              rankingMonth >= 8 ? rankingYear : rankingYear - 1;
-            return seasonYear.toString() === targetSeasonYear;
-          });
-
-          setPlayerRankingHistory(seasonRankings);
-
-          if (seasonRankings.length > 0) {
-            setPlayerRanking(seasonRankings[0]);
-            seasonDataFound = true;
-          }
-        }
-      } catch (rankingErr) {
-        console.log('No ranking data for this season');
-        setPlayerRankingHistory([]);
+        // Determine which season this ranking belongs to
+        const rankingSeason = rankingMonth >= 8 ? rankingYear : rankingYear - 1;
+        return rankingSeason.toString() === seasonYear;
+      });
+      setPlayerRankingHistory(seasonRankings);
+      // Clear the ranking for seasons without one
+      setPlayerRanking(seasonRankings.length > 0 ? seasonRankings[0] : null);
+      if (seasonRankings.length > 0) {
+        seasonDataFound = true;
       }
 
       // Update the hasSeasonData state
       setHasSeasonData(seasonDataFound);
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching player data:', err);
       setError('Failed to load player data. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -390,23 +369,8 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
     }
   };
 
-  const generateSeasons = (yearsBack: number = 5): string[] => {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth(); // 0-11
-
-    // If we're between August and December, current season is currentYear
-    // If we're between January and July, current season is previousYear
-    const currentSeason = currentMonth >= 7 ? currentYear : currentYear - 1;
-
-    // Generate array of seasons going back
-    const seasons: string[] = [];
-    for (let i = 0; i < yearsBack; i++) {
-      seasons.push(String(currentSeason - i));
-    }
-
-    return seasons;
-  };
+  const generateSeasons = (yearsBack: number = 5): string[] =>
+    getRecentSeasons(yearsBack);
 
   const fetchSeasons = async () => {
     try {
@@ -525,6 +489,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
   // Handle pull-to-refresh
   const handleRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchPlayerData();
   };
 

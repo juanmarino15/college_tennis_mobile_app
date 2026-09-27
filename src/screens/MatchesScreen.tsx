@@ -1,5 +1,5 @@
 // src/screens/MatchesScreen.tsx
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {format} from 'date-fns';
 import {api} from '../api';
+import cacheService from '../services/cacheService';
 import theme from '../theme';
 import {Match, Team} from '../api';
 import {ThemeContext} from '../../App';
@@ -96,8 +97,12 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
 
   // const [showEndDatePicker, setShowEndDatePicker] = useState<boolean>(false);
 
+  // Ignore responses from requests that were superseded (e.g. quick date changes)
+  const fetchIdRef = useRef(0);
+
   // Fetch matches based on selected date
   const fetchMatches = async () => {
+    const fetchId = ++fetchIdRef.current;
     try {
       setLoading(true);
 
@@ -136,30 +141,31 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         }
       }
 
-      // Fetch scores for completed matches
+      // Fetch scores for completed matches; a missing score doesn't fail the list
       const completedMatches = matchesData.filter(match => match.completed);
-      const scorePromises = completedMatches.map(match =>
-        api.matches.getScore(match.id),
+      const scoresMap = await api.matches.getScores(
+        completedMatches.map(match => match.id),
       );
-      const scoreResults = await Promise.all(scorePromises);
 
-      // Create scores map
-      const scoresMap: any = {};
-      completedMatches.forEach((match, index) => {
-        scoresMap[match.id] = scoreResults[index];
-      });
-
+      if (fetchId !== fetchIdRef.current) {
+        return;
+      }
       setMatches(matchesData);
       setTeams(teamsData);
       setMatchScores(scoresMap);
       setAvailableConferences(Array.from(conferences).sort());
       setError(null);
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) {
+        return;
+      }
       console.log('Error fetching matches:', err);
       setError('Failed to load matches. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -173,6 +179,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchMatches();
   };
 

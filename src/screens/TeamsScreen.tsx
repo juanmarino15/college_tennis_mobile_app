@@ -16,6 +16,7 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
+import cacheService from '../services/cacheService';
 
 // Define navigation types
 type RootStackParamList = {
@@ -79,6 +80,7 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchTeams();
   };
 

@@ -15,6 +15,7 @@ import {api, Match as ApiMatch, Team as ApiTeam} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
 import {format} from 'date-fns';
+import {getCurrentSeasonYear} from '../utils/season';
 
 // Define the navigation types
 type RootStackParamList = {
@@ -82,14 +83,7 @@ const FavoriteTeamDashboard: React.FC<FavoriteTeamsDashboardProps> = ({
         // Get today's date
         const today = new Date();
 
-        // Get current season (e.g., "2024" for 2024-2025 season)
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth(); // 0-11
-        // If we're in the second half of the academic year (Jan-Jul), use previous year as season
-        const currentSeason =
-          currentMonth < 7
-            ? (currentYear - 1).toString()
-            : currentYear.toString();
+        const currentSeason = getCurrentSeasonYear();
 
         // Fetch upcoming matches for each team (next 7 days)
         const allUpcomingMatches: MatchWithScore[] = [];

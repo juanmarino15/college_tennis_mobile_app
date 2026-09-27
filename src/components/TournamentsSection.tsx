@@ -31,6 +31,7 @@ type TournamentsNavigationProp = StackNavigationProp<RootStackParamList>;
 
 // Import the Tournament types from api
 import {Tournament, TournamentsResponse} from '../api';
+import cacheService from '../services/cacheService';
 
 interface TournamentsSectionProps {
   dateFrom: Date;
@@ -122,6 +123,7 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
 
   // Handle refresh
   const onRefresh = () => {
+    cacheService.forceRefresh();
     fetchTournaments(true);
   };
 

@@ -17,6 +17,7 @@ import {api} from '../api';
 import theme from '../theme';
 import {ThemeContext} from '../../App';
 import TeamLogo from '../components/TeamLogo';
+import cacheService from '../services/cacheService';
 
 // Define the root stack param list
 type RootStackParamList = {
@@ -37,6 +38,15 @@ interface MatchDetailScreenProps {
   route: MatchDetailScreenRouteProp;
   navigation: MatchDetailScreenNavigationProp;
 }
+
+// Malformed or missing dates render as empty text instead of throwing during render
+const safeFormat = (value: string | null | undefined, pattern: string) => {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? '' : format(date, pattern);
+};
 
 const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   route,
@@ -65,36 +75,28 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
       // Fetch match data
       const matchData = await api.matches.getById(matchId);
-      console.log(matchData);
 
-      // Log match data for debugging
-      console.log('Match Data:', {
-        id: matchData.id,
-        completed: matchData.completed,
-        home_team_id: matchData.home_team_id,
-        away_team_id: matchData.away_team_id,
-      });
-
-      // Then fetch teams, lineup, and score in parallel
+      // Then fetch teams, lineup, and score in parallel. Only the match itself is
+      // required; a missing team, lineup or score shouldn't fail the whole screen.
+      const optional = <T,>(promise: Promise<T>, fallback: T) =>
+        promise.catch(err => {
+          console.log('Optional match data failed:', err);
+          return fallback;
+        });
       const [homeTeam, awayTeam, lineupData, scoreData] = await Promise.all([
         matchData.home_team_id
-          ? api.teams.getById(matchData.home_team_id)
+          ? optional(api.teams.getById(matchData.home_team_id), null)
           : Promise.resolve(null),
         matchData.away_team_id
-          ? api.teams.getById(matchData.away_team_id)
+          ? optional(api.teams.getById(matchData.away_team_id), null)
           : Promise.resolve(null),
         matchData.completed
-          ? api.matches.getLineup(matchId)
+          ? optional(api.matches.getLineup(matchId), [])
           : Promise.resolve([]),
         matchData.completed
-          ? api.matches.getScore(matchId)
+          ? optional(api.matches.getScore(matchId), null)
           : Promise.resolve(null),
       ]);
-
-      console.log(homeTeam);
-      console.log(awayTeam);
-      console.log(lineupData);
-      console.log(scoreData);
 
       // Get unique player IDs from lineup
       const playerIds = new Set<string>();
@@ -105,16 +107,17 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
         if (match.side2_player2_id) playerIds.add(match.side2_player2_id);
       });
 
-      // Fetch all player details in parallel
-      const playerPromises = Array.from(playerIds).map(playerId =>
-        api.players.getById(playerId),
+      // Fetch all player details in parallel; skip any that fail
+      const playerResults = await Promise.allSettled(
+        Array.from(playerIds).map(playerId => api.players.getById(playerId)),
       );
-      const playerResults = await Promise.all(playerPromises);
 
       // Create players map
       const playersMap: Record<string, any> = {};
-      playerResults.forEach(player => {
-        playersMap[player.person_id] = player;
+      playerResults.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          playersMap[result.value.person_id] = result.value;
+        }
       });
 
       setMatch(matchData);
@@ -139,6 +142,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchMatchDetails();
   };
 
@@ -444,7 +448,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                         : theme.colors.gray[600],
                     },
                   ]}>
-                  {format(new Date(match.scheduled_time), 'h:mm a')}
+                  {safeFormat(match.scheduled_time, 'h:mm a')}
                 </Text>
               ) : null}
             </View>
@@ -519,7 +523,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       : theme.colors.gray[600],
                   },
                 ]}>
-                {format(new Date(match.start_date), 'EEEE, MMMM d, yyyy')}
+                {safeFormat(match.start_date, 'EEEE, MMMM d, yyyy')}
               </Text>
             </View>
 
@@ -541,7 +545,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                         : theme.colors.gray[600],
                     },
                   ]}>
-                  {format(new Date(match.scheduled_time), 'h:mm a')}
+                  {safeFormat(match.scheduled_time, 'h:mm a')}
                 </Text>
               </View>
             )}

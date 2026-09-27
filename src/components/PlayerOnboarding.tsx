@@ -14,6 +14,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import {api} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
+import {loadWithSeasonFallback} from '../utils/season';
 
 // Define interfaces for the component props
 interface PlayerOnboardingProps {
@@ -98,10 +99,12 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
     try {
       // Use the new search endpoint
       console.log(searchQuery);
-      const results = await api.players.search(
-        searchQuery,
-        preferredGender, // This will now be 'MALE' or 'FEMALE'
-        '2025', // Current season
+      const {data: results} = await loadWithSeasonFallback(season =>
+        api.players.search(
+          searchQuery,
+          preferredGender, // This will now be 'MALE' or 'FEMALE'
+          season,
+        ),
       );
 
       if (results && results.length > 0) {

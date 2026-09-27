@@ -15,6 +15,7 @@ import {api} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
 import {PreferencesManager} from '../utils/preferencesManager';
+import {loadWithSeasonFallback} from '../utils/season';
 
 interface ManageFavoritesModalProps {
   isVisible: boolean;
@@ -168,10 +169,12 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
     setLoading(true);
     try {
       // Search for new players
-      const results = await api.players.search(
-        searchQuery,
-        preferredGender === 'M' ? 'MALE' : 'FEMALE',
-        '2025', // Current season
+      const {data: results} = await loadWithSeasonFallback(season =>
+        api.players.search(
+          searchQuery,
+          preferredGender === 'M' ? 'MALE' : 'FEMALE',
+          season,
+        ),
       );
 
       if (results && results.length > 0) {

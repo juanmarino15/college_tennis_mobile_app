@@ -1,5 +1,5 @@
 // src/screens/TeamDetailScreen.tsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import theme from '../theme';
 import TeamLogo from '../components/TeamLogo';
 import {api, Match, Team, Player} from '../api';
 import RankingHistoryChart from '../components/RankingHistoryChart';
+import cacheService from '../services/cacheService';
+import {getCurrentSeasonYear, getRecentSeasons} from '../utils/season';
 
 // Format date for display
 const formatDate = (dateString: string) => {
@@ -85,14 +87,10 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<string>('2025');
-  const [seasons] = useState<string[]>([
-    '2025',
-    '2024',
-    '2023',
-    '2022',
-    '2021',
-  ]);
+  const [selectedSeason, setSelectedSeason] = useState<string>(
+    getCurrentSeasonYear(),
+  );
+  const [seasons] = useState<string[]>(() => getRecentSeasons(5));
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
   const [matchSortOrder, setMatchSortOrder] = useState('newest');
   const [teamRanking, setTeamRanking] = useState<any>(null);
@@ -111,8 +109,13 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
     setDropdownVisible(false);
   };
 
+  // Ignore responses from requests that were superseded (e.g. quick season changes)
+  const fetchIdRef = useRef(0);
+
   // Fetch team data
   const fetchTeamData = async () => {
+    const fetchId = ++fetchIdRef.current;
+    const isStale = () => fetchId !== fetchIdRef.current;
     try {
       setLoading(true);
 
@@ -121,9 +124,14 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
       try {
         const rankingHistory = await api.rankings.getTeamRankingHistory(teamId);
-        console.log('Full ranking history:', rankingHistory);
+        if (isStale()) {
+          return;
+        }
 
-        if (rankingHistory && rankingHistory.length > 0) {
+        if (!rankingHistory || rankingHistory.length === 0) {
+          setTeamRankingHistory([]);
+          setTeamRanking(null);
+        } else {
           const seasonRankings = rankingHistory.filter((ranking: any) => {
             const rankingDate = new Date(ranking.publish_date);
             const rankingYear = rankingDate.getFullYear();
@@ -139,14 +147,18 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
           setTeamRankingHistory(seasonRankings);
 
-          // Set current ranking (most recent)
-          if (seasonRankings.length > 0) {
-            setTeamRanking(seasonRankings[0]);
-          }
+          // Current ranking is the most recent; clear it for seasons without one
+          setTeamRanking(seasonRankings.length > 0 ? seasonRankings[0] : null);
         }
       } catch (rankingErr) {
         console.log('Error fetching team ranking:', rankingErr);
-        setTeamRankingHistory([]);
+        if (!isStale()) {
+          setTeamRankingHistory([]);
+          setTeamRanking(null);
+        }
+      }
+      if (isStale()) {
+        return;
       }
 
       // Clean the team name from gender markers
@@ -161,22 +173,13 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       if (api.teams.getRoster) {
         // Use the getRoster method if available
         rosterData = await api.teams.getRoster(teamId, selectedSeason);
-        console.log(
-          '📋 Roster data from backend:',
-          JSON.stringify(rosterData, null, 2),
-        );
-        console.log(`📊 Total players: ${rosterData.length}`);
-        rosterData.slice(0, 3).forEach((player, index) => {
-          console.log(
-            `👤 Player ${index + 1}: ${player.first_name} ${
-              player.last_name
-            } - Class: ${player.class_year || 'NO CLASS'}`,
-          );
-        });
       } else {
         // Fallback to getAll players and filter by team
         const allPlayers = await api.players.getAll(teamId);
         rosterData = allPlayers || [];
+      }
+      if (isStale()) {
+        return;
       }
 
       setRoster(rosterData);
@@ -214,18 +217,28 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
         }
       });
 
-      // Fetch all opponent team data
+      // Fetch all opponent team data in one batch request
       const teamsData: Record<string, Team> = {};
-      await Promise.all(
-        Array.from(opponentIds).map(async id => {
-          try {
-            const team = await api.teams.getById(id);
-            teamsData[id] = team;
-          } catch (err) {
-            console.log(`Error fetching team ${id}:`, err);
-          }
-        }),
-      );
+      if (opponentIds.size > 0) {
+        try {
+          const opponents = await api.teams.getBatch(Array.from(opponentIds));
+          // Key by the IDs we asked for; the API may return them in another case
+          const byUpperId = new Map(
+            opponents.filter(Boolean).map(o => [o.id.toUpperCase(), o]),
+          );
+          opponentIds.forEach(id => {
+            const opponent = byUpperId.get(id.toUpperCase());
+            if (opponent) {
+              teamsData[id] = opponent;
+            }
+          });
+        } catch (err) {
+          console.log('Error fetching opponent teams:', err);
+        }
+      }
+      if (isStale()) {
+        return;
+      }
 
       setOpponentTeams(teamsData);
       setMatches(teamMatches);
@@ -234,32 +247,30 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       let statsData: any = null;
       if (api.stats && api.stats.getTeamStats) {
         statsData = await api.stats.getTeamStats(teamId, selectedSeason);
-        // Get scores for completed matches
+        // Get scores for completed matches; a missing score doesn't fail the page
         const completedMatches = teamMatches.filter(match => match.completed);
-        const scorePromises = completedMatches.map(match =>
-          api.matches.getScore(match.id),
+        const scoresMap = await api.matches.getScores(
+          completedMatches.map(match => match.id),
         );
-
-        const scores = await Promise.all(scorePromises);
-
-        // Create scores map
-        const scoresMap: Record<string, any> = {};
-        completedMatches.forEach((match, index) => {
-          scoresMap[match.id] = scores[index];
-        });
-
-        // Make sure to set the match scores here
+        if (isStale()) {
+          return;
+        }
         setMatchScores(scoresMap);
       }
 
       setStats(statsData);
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching team data:', err);
       setError('Failed to load team data. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -271,6 +282,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   // Handle pull-to-refresh
   const handleRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchTeamData();
   };
 

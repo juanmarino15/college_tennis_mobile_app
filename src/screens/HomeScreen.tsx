@@ -19,10 +19,12 @@ import FavoritePlayersSection from '../components/FavoritePlayerSection';
 import BigMatchesSection from '../components/BigMatchesSection';
 import TennisNewsFeed from '../components/TennisNewsFeed';
 import ManageFavoritesModal from '../components/ManageFavoritesModal';
+import cacheService from '../services/cacheService';
 
 const HomeScreen = () => {
   const {isDark} = useContext(ThemeContext);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [userPreferences, setUserPreferences] = useState({
     favoriteTeams: [],
@@ -107,7 +109,10 @@ const HomeScreen = () => {
   // Handle refreshing the page
   const onRefresh = async () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     await loadUserPreferences();
+    // Remount the sections so they refetch their data
+    setRefreshKey(k => k + 1);
     setRefreshing(false);
   };
 
@@ -202,6 +207,7 @@ const HomeScreen = () => {
 
         {/* Favorite Teams Dashboard */}
         <FavoriteTeamDashboard
+          key={`teams-${refreshKey}`}
           favoriteTeams={userPreferences.favoriteTeams}
           isDark={isDark}
           onViewAll={() => openManageFavorites('teams')}
@@ -209,12 +215,14 @@ const HomeScreen = () => {
 
         {/* Big Upcoming Matches */}
         <BigMatchesSection
+          key={`big-${refreshKey}`}
           favoriteTeams={userPreferences.favoriteTeams}
           isDark={isDark}
         />
 
         {/* Favorite Players */}
         <FavoritePlayersSection
+          key={`players-${refreshKey}`}
           favoritePlayers={userPreferences.favoritePlayers}
           isDark={isDark}
           onViewAll={() => openManageFavorites('players')}

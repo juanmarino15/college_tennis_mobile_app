@@ -25,6 +25,8 @@ import PlayerScreen from './src/screens/PlayerScreen';
 import PlayerSearchScreen from './src/screens/PlayerSearchScreen'; // Add this import
 import RankingsScreen from './src/screens/RankingsScreen';
 import TournamentDrawScreen from './src/screens/TournamentDrawScreen';
+import cacheService from './src/services/cacheService';
+import {initCurrentSeason} from './src/utils/season';
 
 // For now, use placeholders
 const PlaceholderScreen = () => <></>;
@@ -139,6 +141,11 @@ export const ThemeContext = React.createContext({
 const App = () => {
   // Force dark theme as default
   const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    cacheService.pruneExpired();
+    initCurrentSeason();
+  }, []);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
