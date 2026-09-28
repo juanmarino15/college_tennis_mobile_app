@@ -317,53 +317,13 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         ]}
         onPress={() => handleMatchPress(item.id)}
         activeOpacity={0.7}>
-        {/* Gender and conference tags sit in their own row above the teams */}
-        <View style={styles.cardTopRow}>
-          <Text
-            style={[
-              styles.genderBadge,
-              {
-                backgroundColor: isDark
-                  ? theme.colors.gray[800]
-                  : theme.colors.gray[100],
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {gender === 'MALE' ? 'M' : 'W'}
-          </Text>
-          {item.is_conference_match && (
-            <View
-              style={[
-                styles.conferenceTag,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.primary[900]
-                    : theme.colors.primary[50],
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.conferenceText,
-                  {
-                    color: isDark
-                      ? theme.colors.primary[200]
-                      : theme.colors.primary[700],
-                  },
-                ]}>
-                Conference
-              </Text>
-            </View>
-          )}
-        </View>
         <View style={styles.matchContent}>
           {/* Home Team */}
           <View style={styles.teamContainer}>
             <TeamLogo
               teamId={item.home_team_id}
               name={homeTeam?.name}
-              size="small"
+              size="large"
             />
             <Text
               style={[
@@ -451,6 +411,40 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
                 </Text>
               </>
             )}
+            {/* Gender and conference tags under the score, so the card
+                needs no extra row */}
+            <View style={styles.metaRow}>
+              <Text
+                style={[
+                  styles.metaTag,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.gray[800]
+                      : theme.colors.gray[100],
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                {gender === 'MALE' ? 'M' : 'W'}
+              </Text>
+              {item.is_conference_match && (
+                <Text
+                  style={[
+                    styles.metaTag,
+                    {
+                      backgroundColor: isDark
+                        ? theme.colors.primary[900]
+                        : theme.colors.primary[50],
+                      color: isDark
+                        ? theme.colors.primary[200]
+                        : theme.colors.primary[700],
+                    },
+                  ]}>
+                  Conf
+                </Text>
+              )}
+            </View>
           </View>
 
           {/* Away Team */}
@@ -458,7 +452,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
             <TeamLogo
               teamId={item.away_team_id}
               name={awayTeam?.name}
-              size="small"
+              size="large"
             />
             <Text
               style={[
@@ -1134,9 +1128,8 @@ const styles = StyleSheet.create({
   },
   matchCard: {
     borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing[4],
-    paddingTop: theme.spacing[3],
-    paddingBottom: theme.spacing[4],
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[3],
     marginBottom: theme.spacing[3],
     ...theme.shadows.md,
     position: 'relative',
@@ -1156,14 +1149,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   teamName: {
-    marginTop: theme.spacing[2],
+    marginTop: theme.spacing[1.5],
     textAlign: 'center',
     fontSize: theme.typography.fontSize.xs,
     fontWeight: '500',
   },
   scoreContainer: {
     alignItems: 'center',
-    paddingHorizontal: theme.spacing[2],
+    // Fixed width keeps both team columns the same size on every card
+    width: 84,
   },
   score: {
     fontSize: theme.typography.fontSize.lg,
@@ -1186,20 +1180,19 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: theme.typography.fontSize.xs,
   },
-  cardTopRow: {
+  metaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing[2],
+    justifyContent: 'center',
+    gap: theme.spacing[1],
+    marginTop: theme.spacing[1.5],
   },
-  conferenceTag: {
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[0.5],
-    borderRadius: theme.borderRadius.full,
-  },
-  conferenceText: {
+  metaTag: {
     fontSize: 10,
     fontWeight: '500',
+    paddingHorizontal: theme.spacing[1.5],
+    paddingVertical: 1,
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
   },
 
   dividerContainer: {
@@ -1215,14 +1208,6 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: theme.spacing[2],
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '500',
-  },
-  genderBadge: {
-    fontSize: 10,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[0.5],
-    borderRadius: theme.borderRadius.full,
-    overflow: 'hidden',
     fontWeight: '500',
   },
   tabContainer: {
