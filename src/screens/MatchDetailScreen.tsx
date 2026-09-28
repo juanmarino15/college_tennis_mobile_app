@@ -16,7 +16,7 @@ import {format} from 'date-fns';
 import {api} from '../api';
 import theme from '../theme';
 import {ThemeContext} from '../../App';
-import TeamLogo from '../components/TeamLogo';
+import TeamLogo, {teamInitials} from '../components/TeamLogo';
 import cacheService from '../services/cacheService';
 
 // Define the root stack param list
@@ -67,6 +67,10 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [matchScore, setMatchScore] = useState<any>(null);
   const [players, setPlayers] = useState<Record<string, any>>({});
+  // Which team (home/away) each lineup player is on, from the two rosters
+  const [playerSides, setPlayerSides] = useState<
+    Record<string, 'home' | 'away'>
+  >({});
 
   // Fetch match details
   const fetchMatchDetails = async () => {
@@ -107,10 +111,23 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
         if (match.side2_player2_id) playerIds.add(match.side2_player2_id);
       });
 
-      // Fetch all player details in parallel; skip any that fail
-      const playerResults = await Promise.allSettled(
-        Array.from(playerIds).map(playerId => api.players.getById(playerId)),
-      );
+      // Fetch all player details in parallel; skip any that fail. The rosters
+      // tell us each player's team: the lineup's side order doesn't follow
+      // home/away and its team names are mostly empty.
+      const rosterFor = (teamId?: string) =>
+        teamId && playerIds.size > 0
+          ? optional(api.teams.getRoster(teamId, matchData.season), [])
+          : Promise.resolve([]);
+      const [playerResults, homeRoster, awayRoster] = await Promise.all([
+        Promise.allSettled(
+          Array.from(playerIds).map(playerId => api.players.getById(playerId)),
+        ),
+        rosterFor(matchData.home_team_id),
+        rosterFor(matchData.away_team_id),
+      ]);
+      const sides: Record<string, 'home' | 'away'> = {};
+      homeRoster.forEach((p: any) => (sides[p.person_id] = 'home'));
+      awayRoster.forEach((p: any) => (sides[p.person_id] = 'away'));
 
       // Create players map
       const playersMap: Record<string, any> = {};
@@ -125,6 +142,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
       setLineup(lineupData);
       setMatchScore(scoreData);
       setPlayers(playersMap);
+      setPlayerSides(sides);
       setError(null);
     } catch (err) {
       console.log('Error fetching match details:', err);
@@ -147,6 +165,59 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   };
 
   // Format player name helper
+  // Short team label: the team's abbreviation (YU, PSU) or initials from its name
+  const teamShortName = (team: any): string => {
+    if (!team) {
+      return '';
+    }
+    const abbreviation = (team.abbreviation || '').trim();
+    return abbreviation && abbreviation.length <= 6
+      ? abbreviation
+      : teamInitials(team.name);
+  };
+
+  // Team label for one side of a lineup row
+  const sideTeamLabel = (row: any, side: 1 | 2): string => {
+    const own =
+      side === 1
+        ? [row.side1_player1_id, row.side1_player2_id]
+        : [row.side2_player1_id, row.side2_player2_id];
+    const opponents =
+      side === 1
+        ? [row.side2_player1_id, row.side2_player2_id]
+        : [row.side1_player1_id, row.side1_player2_id];
+    let teamSide = own.map(id => playerSides[id]).find(Boolean);
+    if (!teamSide) {
+      // One side known means the other side is the opposing team
+      const opponentSide = opponents.map(id => playerSides[id]).find(Boolean);
+      if (opponentSide) {
+        teamSide = opponentSide === 'home' ? 'away' : 'home';
+      }
+    }
+    if (!teamSide) {
+      const name = side === 1 ? row.side1_name : row.side2_name;
+      if (name) {
+        teamSide = (['home', 'away'] as const).find(
+          key =>
+            teams[key] &&
+            (name === teams[key].abbreviation || name === teams[key].name),
+        );
+      }
+    }
+    return teamSide ? teamShortName(teams[teamSide]) : '';
+  };
+
+  const renderTeamTag = (label: string) =>
+    label ? (
+      <Text
+        style={[
+          styles.teamTag,
+          {color: isDark ? theme.colors.text.dimDark : theme.colors.gray[500]},
+        ]}>
+        {`  ${label}`}
+      </Text>
+    ) : null;
+
   const formatPlayerName = (player: any): string => {
     if (!player) return '';
     return `${player.first_name.charAt(0)}. ${player.last_name}`;
@@ -645,7 +716,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                             color={
                               match.side1_won
                                 ? theme.colors.success
-                                : theme.colors.white
+                                : isDark
+                                ? theme.colors.white
+                                : theme.colors.text.light
                             }
                           />
                           <Text
@@ -654,7 +727,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                               {
                                 color: match.side1_won
                                   ? theme.colors.success
-                                  : theme.colors.white,
+                                  : isDark
+                                  ? theme.colors.white
+                                  : theme.colors.text.light,
                               },
                             ]}
                             numberOfLines={2}>
@@ -662,8 +737,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                             {match.side1_player2_id &&
                               ` / ${formatPlayerName(
                                 players[match.side1_player2_id],
-                              )}`}{' '}
-                            [{match.side1_name}]
+                              )}`}
+                            {renderTeamTag(sideTeamLabel(match, 1))}
                           </Text>
                           {match.side1_won && (
                             <Icon
@@ -695,7 +770,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                         {
                                           color: match.side1_won
                                             ? theme.colors.success
-                                            : theme.colors.white,
+                                            : isDark
+                                            ? theme.colors.white
+                                            : theme.colors.text.light,
                                         },
                                       ]}>
                                       {set.score1}
@@ -711,7 +788,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                               right: -8, // Offset to the right
                                               color: match.side1_won
                                                 ? theme.colors.success
-                                                : theme.colors.white,
+                                                : isDark
+                                                ? theme.colors.white
+                                                : theme.colors.text.light,
                                             },
                                           ]}>
                                           {set.tiebreak}
@@ -740,7 +819,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                             color={
                               match.side2_won
                                 ? theme.colors.success
-                                : theme.colors.white
+                                : isDark
+                                ? theme.colors.white
+                                : theme.colors.text.light
                             }
                           />
                           <Text
@@ -749,7 +830,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                               {
                                 color: match.side2_won
                                   ? theme.colors.success
-                                  : theme.colors.white,
+                                  : isDark
+                                  ? theme.colors.white
+                                  : theme.colors.text.light,
                               },
                             ]}
                             numberOfLines={2}>
@@ -757,8 +840,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                             {match.side2_player2_id &&
                               ` / ${formatPlayerName(
                                 players[match.side2_player2_id],
-                              )}`}{' '}
-                            [{match.side2_name}]
+                              )}`}
+                            {renderTeamTag(sideTeamLabel(match, 2))}
                           </Text>
                           {match.side2_won && (
                             <Icon
@@ -785,7 +868,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                       {
                                         color: match.side2_won
                                           ? theme.colors.success
-                                          : theme.colors.white,
+                                          : isDark
+                                          ? theme.colors.white
+                                          : theme.colors.text.light,
                                       },
                                     ]}>
                                     {set.score2}
@@ -798,7 +883,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                           {
                                             color: match.side2_won
                                               ? theme.colors.success
-                                              : theme.colors.white,
+                                              : isDark
+                                              ? theme.colors.white
+                                              : theme.colors.text.light,
                                           },
                                         ]}>
                                         {set.tiebreak}
@@ -899,7 +986,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                               color={
                                 match.side1_won
                                   ? theme.colors.success
-                                  : theme.colors.white
+                                  : isDark
+                                  ? theme.colors.white
+                                  : theme.colors.text.light
                               }
                             />
                             <Text
@@ -908,14 +997,16 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                 {
                                   color: match.side1_won
                                     ? theme.colors.success
-                                    : theme.colors.white,
+                                    : isDark
+                                    ? theme.colors.white
+                                    : theme.colors.text.light,
                                 },
                               ]}
                               numberOfLines={1}>
                               {formatPlayerName(
                                 players[match.side1_player1_id],
-                              )}{' '}
-                              [{match.side1_name}]
+                              )}
+                              {renderTeamTag(sideTeamLabel(match, 1))}
                             </Text>
                             {match.side1_won && (
                               <Icon
@@ -942,7 +1033,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                         {
                                           color: match.side1_won
                                             ? theme.colors.success
-                                            : theme.colors.white,
+                                            : isDark
+                                            ? theme.colors.white
+                                            : theme.colors.text.light,
                                         },
                                       ]}>
                                       {set.score1}
@@ -955,7 +1048,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                             {
                                               color: match.side1_won
                                                 ? theme.colors.success
-                                                : theme.colors.white,
+                                                : isDark
+                                                ? theme.colors.white
+                                                : theme.colors.text.light,
                                             },
                                           ]}>
                                           {set.tiebreak}
@@ -983,7 +1078,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                               color={
                                 match.side2_won
                                   ? theme.colors.success
-                                  : theme.colors.white
+                                  : isDark
+                                  ? theme.colors.white
+                                  : theme.colors.text.light
                               }
                             />
                             <Text
@@ -992,14 +1089,16 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                 {
                                   color: match.side2_won
                                     ? theme.colors.success
-                                    : theme.colors.white,
+                                    : isDark
+                                    ? theme.colors.white
+                                    : theme.colors.text.light,
                                 },
                               ]}
                               numberOfLines={1}>
                               {formatPlayerName(
                                 players[match.side2_player1_id],
-                              )}{' '}
-                              [{match.side2_name}]
+                              )}
+                              {renderTeamTag(sideTeamLabel(match, 2))}
                             </Text>
                             {match.side2_won && (
                               <Icon
@@ -1026,7 +1125,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                         {
                                           color: match.side2_won
                                             ? theme.colors.success
-                                            : theme.colors.white,
+                                            : isDark
+                                            ? theme.colors.white
+                                            : theme.colors.text.light,
                                         },
                                       ]}>
                                       {set.score2}
@@ -1039,7 +1140,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                             {
                                               color: match.side2_won
                                                 ? theme.colors.success
-                                                : theme.colors.white,
+                                                : isDark
+                                                ? theme.colors.white
+                                                : theme.colors.text.light,
                                             },
                                           ]}>
                                           {set.tiebreak}
@@ -1321,6 +1424,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  teamTag: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '500',
   },
   playerText: {
     marginLeft: theme.spacing[1],
