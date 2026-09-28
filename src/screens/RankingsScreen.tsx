@@ -1169,7 +1169,7 @@ const RankingsScreen: React.FC = () => {
                         color: isDark
                           ? theme.colors.primary[400]
                           : theme.colors.primary[600],
-                        fontWeight: '600',
+                        fontWeight: '500',
                       },
                     ]}>
                     {formatRankingListDate(list)}
@@ -1229,7 +1229,7 @@ const styles = StyleSheet.create({
   },
   segmentButtonText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   genderControl: {
     flexDirection: 'row',
@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   dateSelector: {
     flex: 1,
@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
   },
   columnHeaderText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   rankHeaderCell: {
     width: 50,
@@ -1301,7 +1301,7 @@ const styles = StyleSheet.create({
   },
   rankText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   teamCell: {
     flex: 1,
@@ -1314,7 +1314,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   conferenceText: {
     fontSize: theme.typography.fontSize.xs,
@@ -1362,7 +1362,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
   },
   datePickerTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[3],
     textAlign: 'center',
   },
@@ -1415,7 +1415,7 @@ const styles = StyleSheet.create({
   },
   secondPlayerName: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginTop: 2, // Small gap between player names
   },
 });

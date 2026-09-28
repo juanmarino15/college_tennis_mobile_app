@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   loadingContainer: {
     padding: theme.spacing[8],
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   },
   emptyButtonText: {
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   addButton: {
     flexDirection: 'row',
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   teamsScroll: {
     marginBottom: theme.spacing[4],
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
   rankingText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   genderBadge: {
     position: 'absolute',
@@ -798,15 +798,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   genderText: {
-    fontSize: 9,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '500',
   },
   section: {
     marginTop: theme.spacing[4],
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
   },
@@ -831,11 +831,11 @@ const styles = StyleSheet.create({
   },
   matchDateWeekday: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   matchDate: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   matchLocation: {
     fontSize: theme.typography.fontSize.xs,
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   dnfScoreText: {
     fontSize: theme.typography.fontSize.xs,

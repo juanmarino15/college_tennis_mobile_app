@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: 'bold',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: theme.spacing[2],
   },
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   selectionIndicator: {
     marginBottom: theme.spacing[2],
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   playerTeamInfo: {
     flexDirection: 'row',
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   buttonsContainer: {
     alignItems: 'center',
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   skipButton: {
     padding: theme.spacing[2],
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   },
   utrValue: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: theme.colors.primary[600],
   },
 });

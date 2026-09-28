@@ -551,7 +551,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                         color: isDark
                           ? theme.colors.primary[400]
                           : theme.colors.primary[600],
-                        fontWeight: '600',
+                        fontWeight: '500',
                       },
                     ]}>
                     {season}-{parseInt(season) + 1}
@@ -1046,7 +1046,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                     color: isDark
                       ? theme.colors.primary[400]
                       : theme.colors.primary[600],
-                    fontWeight: '600',
+                    fontWeight: '500',
                   },
                   {
                     color:
@@ -1081,7 +1081,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                     color: isDark
                       ? theme.colors.primary[400]
                       : theme.colors.primary[600],
-                    fontWeight: '600',
+                    fontWeight: '500',
                   },
                   {
                     color:
@@ -1422,8 +1422,8 @@ const styles = StyleSheet.create({
     top: 50,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
   headerContent: {
@@ -1463,7 +1463,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   headerCard: {
     borderRadius: theme.borderRadius.lg,
@@ -1476,8 +1476,8 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing[2],
   },
   teamName: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: '600',
     textAlign: 'center',
   },
   conferenceText: {
@@ -1555,7 +1555,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: theme.typography.fontSize.xs,
@@ -1579,7 +1579,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
     marginLeft: theme.spacing[2],
   },
   sortToggleContainer: {
@@ -1639,11 +1639,11 @@ const styles = StyleSheet.create({
   },
   matchDateWeekday: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   matchDate: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   matchLocation: {
     fontSize: theme.typography.fontSize.xs,
@@ -1677,7 +1677,7 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   matchTime: {
     fontSize: theme.typography.fontSize.sm,
@@ -1727,7 +1727,7 @@ const styles = StyleSheet.create({
   },
   playerNameSingle: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[1],
   },
   playerMetaRow: {

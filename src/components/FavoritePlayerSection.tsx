@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   loadingContainer: {
     padding: theme.spacing[8],
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
   },
   emptyButtonText: {
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   addButton: {
     flexDirection: 'row',
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   playerCard: {
     marginHorizontal: theme.spacing[4],
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   teamContainer: {
     flexDirection: 'row',
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: theme.typography.fontSize.xs,
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   },
   resultsTitle: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[2],
   },
   resultItem: {
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   resultBadgeText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   resultScore: {
     fontSize: theme.typography.fontSize.xs,

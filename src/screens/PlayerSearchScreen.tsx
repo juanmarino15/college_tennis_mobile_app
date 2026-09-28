@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   searchBar: {
     flexDirection: 'row',
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[1],
   },
   playerMeta: {
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
   },
   wtnText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.primary[700],
   },
   centerContainer: {
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   counterContainer: {
     marginBottom: theme.spacing[3],
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   itemDescription: {
     fontSize: theme.typography.fontSize.sm,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   playerAvatar: {
     width: 40,

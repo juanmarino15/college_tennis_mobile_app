@@ -6,9 +6,10 @@ import theme from '../theme';
 import {api} from '../api';
 import {ThemeContext} from '../../App';
 
-// xsmall: ranking and player rows, small: match cards and inline rows,
-// medium: team lists and cards, large: page headers
-export type TeamLogoSize = 'xsmall' | 'small' | 'medium' | 'large';
+// Sizes follow FotMob: xsmall for list and table rows, small for match cards,
+// medium for team lists and cards, large for page headers, xlarge for the
+// match page header
+export type TeamLogoSize = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 
 interface TeamLogoProps {
   teamId?: string;
@@ -19,10 +20,11 @@ interface TeamLogoProps {
 }
 
 const SIZE_MAP: Record<TeamLogoSize, {size: number; fontSize: number}> = {
-  xsmall: {size: 24, fontSize: 9},
-  small: {size: 28, fontSize: 10},
-  medium: {size: 36, fontSize: 12},
-  large: {size: 56, fontSize: 18},
+  xsmall: {size: 18, fontSize: 7},
+  small: {size: 22, fontSize: 8},
+  medium: {size: 28, fontSize: 10},
+  large: {size: 36, fontSize: 13},
+  xlarge: {size: 56, fontSize: 18},
 };
 
 const NAME_STOP_WORDS = new Set(['of', 'the', 'at', 'and', '&', '-']);
@@ -107,7 +109,10 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
         styles.logoContainer,
         box,
         // Most college logos are dark, so give them a light backing on dark cards
-        isDark && styles.logoContainerDark,
+        isDark && [
+          styles.logoContainerDark,
+          {borderRadius: Math.round(dimension * 0.25)},
+        ],
         containerStyle,
       ]}>
       <Image
@@ -129,8 +134,7 @@ const styles = StyleSheet.create({
   },
   logoContainerDark: {
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderRadius: theme.borderRadius.lg,
-    padding: 2,
+    padding: 1,
   },
   logo: {
     width: '100%',
@@ -142,7 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
   },
   placeholderText: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
 

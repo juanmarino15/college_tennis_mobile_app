@@ -1135,7 +1135,7 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
                     <Text
                       numberOfLines={1}
                       style={{
-                        fontWeight: '600',
+                        fontWeight: '500',
                         color: isDark
                           ? theme.colors.text.dark
                           : theme.colors.text.light,
@@ -1381,13 +1381,13 @@ const styles = StyleSheet.create({
   },
   backButton: {padding: 8, marginRight: 8},
   headerContent: {flex: 1},
-  headerTitle: {fontSize: 18, fontWeight: 'bold'},
-  headerSubtitle: {fontSize: 14, marginTop: 2},
+  headerTitle: {fontSize: 16, fontWeight: '600'},
+  headerSubtitle: {fontSize: 13, marginTop: 2},
   content: {flex: 1},
 
   // Selector
   drawSelector: {padding: 16},
-  selectorLabel: {fontSize: 16, fontWeight: '600', marginBottom: 12},
+  selectorLabel: {fontSize: 14, fontWeight: '500', marginBottom: 12},
   drawOptions: {paddingRight: 16},
   drawOption: {
     paddingHorizontal: 16,
@@ -1397,8 +1397,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  drawOptionText: {fontSize: 14, fontWeight: '500'},
-  drawSizeText: {fontSize: 12, marginLeft: 4},
+  drawOptionText: {fontSize: 13, fontWeight: '500'},
+  drawSizeText: {fontSize: 11, marginLeft: 4},
 
   // Stats
   statsContainer: {
@@ -1408,13 +1408,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   statItem: {alignItems: 'center'},
-  statValue: {fontSize: 18, fontWeight: 'bold'},
-  statLabel: {fontSize: 12, marginTop: 2},
+  statValue: {fontSize: 16, fontWeight: '600'},
+  statLabel: {fontSize: 11, marginTop: 2},
 
   // Round header (used in both modes)
   roundTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -1441,8 +1441,8 @@ const styles = StyleSheet.create({
 
   winnerParticipant: {backgroundColor: 'rgba(34, 197, 94, 0.10)'},
   participantInfo: {flex: 1, paddingRight: 8},
-  participantName: {fontSize: 14, lineHeight: 18},
-  schoolName: {fontSize: 12, marginTop: 2, lineHeight: 16},
+  participantName: {fontSize: 13, lineHeight: 18},
+  schoolName: {fontSize: 11, marginTop: 2, lineHeight: 16},
   nameRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -1450,22 +1450,22 @@ const styles = StyleSheet.create({
   },
   seedText: {
     marginLeft: 5,
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.primary[600],
     fontWeight: '500',
   },
 
   scoreContainer: {minWidth: 52, alignItems: 'flex-end'},
-  score: {fontSize: 14, fontWeight: '500'},
+  score: {fontSize: 13, fontWeight: '500'},
   matchDivider: {height: 1, marginVertical: 6},
   statusIndicator: {marginTop: 4, alignItems: 'center'},
-  statusText: {fontSize: 12, fontStyle: 'italic'},
+  statusText: {fontSize: 11, fontStyle: 'italic'},
 
   emptyState: {alignItems: 'center', paddingVertical: 40},
-  emptyStateText: {fontSize: 16, marginTop: 12},
-  loadingText: {fontSize: 16, marginTop: 12},
+  emptyStateText: {fontSize: 14, marginTop: 12},
+  loadingText: {fontSize: 14, marginTop: 12},
   errorText: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
     marginHorizontal: 32,
     marginTop: 12,
@@ -1476,7 +1476,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 16,
   },
-  retryButtonText: {color: 'white', fontSize: 16, fontWeight: '600'},
+  retryButtonText: {color: 'white', fontSize: 14, fontWeight: '500'},
 
   // --- round robin styles ---
   rrCard: {
@@ -1485,17 +1485,17 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
   },
-  rrTitle: {fontSize: 16, fontWeight: '700', marginBottom: 8},
+  rrTitle: {fontSize: 14, fontWeight: '600', marginBottom: 8},
 
   // Simple table
   table: {borderWidth: 1, borderRadius: 8, overflow: 'hidden'},
   tr: {flexDirection: 'row', alignItems: 'center'},
   trAlt: {},
   thRow: {paddingVertical: 8, paddingHorizontal: 8},
-  thColName: {flex: 1, fontSize: 12, fontWeight: '700'},
-  th: {width: 48, fontSize: 12, fontWeight: '700', textAlign: 'center'},
-  tdName: {flex: 1, fontSize: 12, paddingVertical: 10, paddingHorizontal: 8},
-  td: {width: 48, fontSize: 12, paddingVertical: 10},
+  thColName: {flex: 1, fontSize: 11, fontWeight: '600'},
+  th: {width: 48, fontSize: 11, fontWeight: '600', textAlign: 'center'},
+  tdName: {flex: 1, fontSize: 11, paddingVertical: 10, paddingHorizontal: 8},
+  td: {width: 48, fontSize: 11, paddingVertical: 10},
 
   // Fixtures
   fixtureRow: {
@@ -1507,8 +1507,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  fixtureText: {fontSize: 13, flex: 1, marginRight: 12},
-  fixtureScore: {fontSize: 13},
+  fixtureText: {fontSize: 12, flex: 1, marginRight: 12},
+  fixtureScore: {fontSize: 12},
 });
 
 export default TournamentDrawScreen;

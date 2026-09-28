@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   },
   tournamentName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[1],
   },
   tournamentMeta: {
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.primary[700],
   },
   activeStatusText: {
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   },
   divisionText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.primary[700],
   },
 });

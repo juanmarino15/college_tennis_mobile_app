@@ -113,7 +113,7 @@ const TabNavigator = () => {
         },
         headerTitleStyle: {
           color: isDark ? theme.colors.text.dark : theme.colors.text.light,
-          fontSize: theme.typography.fontSize.lg,
+          fontSize: theme.typography.fontSize.xl,
           fontWeight: '600',
         },
       })}>

@@ -486,19 +486,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
     marginLeft: 8,
   },
   rankingInfo: {
     alignItems: 'flex-end',
   },
   currentRank: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '600',
   },
   currentLabel: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 2,
   },
   statsRow: {
@@ -518,8 +518,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: 11,
@@ -547,8 +547,8 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   tooltipRank: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
   },
   tooltipDate: {

@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   conferenceText: {
     fontSize: theme.typography.fontSize.sm,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

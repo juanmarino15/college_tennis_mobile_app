@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: theme.spacing[2],
     textAlign: 'center',
   },
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     textAlign: 'center',
     marginBottom: theme.spacing[6],
-    lineHeight: 24,
+    lineHeight: 19,
   },
   button: {
     paddingVertical: theme.spacing[3],
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   skipButton: {
     padding: theme.spacing[2],
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   conferenceText: {
     fontSize: theme.typography.fontSize.sm,

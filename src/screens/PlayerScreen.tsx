@@ -808,7 +808,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                             color: isDark
                               ? theme.colors.primary[400]
                               : theme.colors.primary[600],
-                            fontWeight: '600',
+                            fontWeight: '500',
                           },
                         ]}>
                         {season.includes('-')
@@ -857,7 +857,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                       ? theme.colors.text.dark
                       : theme.colors.gray[700],
                   fontSize: theme.typography.fontSize.xs,
-                  fontWeight: '600',
+                  fontWeight: '500',
                 }}>
                 All
               </Text>
@@ -885,7 +885,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                       ? theme.colors.text.dark
                       : theme.colors.gray[700],
                   fontSize: theme.typography.fontSize.xs,
-                  fontWeight: '600',
+                  fontWeight: '500',
                 }}>
                 Dual
               </Text>
@@ -913,7 +913,7 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
                       ? theme.colors.text.dark
                       : theme.colors.gray[700],
                   fontSize: theme.typography.fontSize.xs,
-                  fontWeight: '600',
+                  fontWeight: '500',
                 }}>
                 Non-Dual
               </Text>
@@ -1614,7 +1614,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 
   // Card styles
@@ -1654,8 +1654,8 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing[2],
   },
   playerName: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: '600',
     textAlign: 'center',
   },
   universityName: {
@@ -1742,7 +1742,7 @@ const styles = StyleSheet.create({
   },
   statsCardTitle: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[2],
   },
   statsRow: {
@@ -1761,7 +1761,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: theme.typography.fontSize.xs,
@@ -1776,7 +1776,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
     marginLeft: theme.spacing[2],
   },
 
@@ -1813,7 +1813,7 @@ const styles = StyleSheet.create({
   },
   matchTypeTitle: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[2],
     paddingLeft: theme.spacing[1],
   },
@@ -1842,7 +1842,7 @@ const styles = StyleSheet.create({
   },
   matchPosition: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
     marginRight: theme.spacing[2],
   },
   matchDate: {
@@ -1888,7 +1888,7 @@ const styles = StyleSheet.create({
   resultChipText: {
     color: theme.colors.white,
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   dnfScoreText: {
     fontSize: theme.typography.fontSize.xs,
@@ -1913,7 +1913,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   winnerScore: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   loserScore: {
     fontWeight: '400',
@@ -1925,7 +1925,7 @@ const styles = StyleSheet.create({
     height: 20,
   },
   tiebreakSuper: {
-    fontSize: 9,
+    fontSize: 10,
     lineHeight: 10,
     fontWeight: '500',
     color: theme.colors.gray[500],
@@ -1952,13 +1952,13 @@ const styles = StyleSheet.create({
   wtnLabel: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginRight: 4,
   },
   wtnValue: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '600',
   },
 
   // Empty state
@@ -1978,18 +1978,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   noDataTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 19,
+    fontWeight: '600',
     marginBottom: 12,
   },
   noDataMessage: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
     marginBottom: 8,
-    lineHeight: 24,
+    lineHeight: 20,
   },
   noDataSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -2011,8 +2011,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
   classYearText: {

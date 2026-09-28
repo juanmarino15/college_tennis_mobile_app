@@ -407,8 +407,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'blue', // This will be overridden by the theme color
   },
   tabText: {
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '500',
+    fontSize: 13,
   },
   noDataContainer: {
     height: 120,
@@ -430,8 +430,8 @@ const styles = StyleSheet.create({
     maxWidth: 130,
   },
   positionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   },
   barLabel: {
     width: 16,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   barBackground: {
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   barValue: {
     width: 25,
     textAlign: 'right',
-    fontSize: 12,
+    fontSize: 11,
     marginLeft: 5,
   },
   detailsContainer: {
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   detailsText: {
-    fontSize: 12,
+    fontSize: 11,
     marginVertical: 2,
   },
   legendContainer: {

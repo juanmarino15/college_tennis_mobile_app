@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: theme.typography.fontSize['3xl'],
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   dateText: {
     fontSize: theme.typography.fontSize.base,

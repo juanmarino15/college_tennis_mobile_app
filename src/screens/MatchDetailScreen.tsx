@@ -394,7 +394,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
           <View style={styles.teamsHeader}>
             {/* Home Team */}
             <View style={styles.teamColumn}>
-              <TeamLogo teamId={match.home_team_id} size="large" />
+              <TeamLogo teamId={match.home_team_id} size="xlarge" />
               <Text
                 style={[
                   styles.teamName,
@@ -459,7 +459,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
             {/* Away Team */}
             <View style={styles.teamColumn}>
-              <TeamLogo teamId={match.away_team_id} size="large" />
+              <TeamLogo teamId={match.away_team_id} size="xlarge" />
               <Text
                 style={[
                   styles.teamName,
@@ -1144,8 +1144,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
 
@@ -1184,7 +1184,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   card: {
     margin: theme.spacing[4],
@@ -1205,11 +1205,11 @@ const styles = StyleSheet.create({
   teamName: {
     marginTop: theme.spacing[2],
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     textAlign: 'center',
   },
   conferenceTeam: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   conferenceText: {
     fontSize: theme.typography.fontSize.xs,
@@ -1221,8 +1221,8 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing[2],
   },
   scoreText: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
+    fontSize: theme.typography.fontSize['4xl'],
+    fontWeight: '600',
   },
   timeText: {
     fontSize: theme.typography.fontSize.sm,
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: theme.spacing[4],
   },
   matchesList: {
@@ -1295,7 +1295,7 @@ const styles = StyleSheet.create({
   },
   matchNumberText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   unfinishedTag: {
     paddingHorizontal: theme.spacing[2],
@@ -1306,7 +1306,7 @@ const styles = StyleSheet.create({
   unfinishedText: {
     color: theme.colors.white,
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   playerRow: {
     flexDirection: 'row',
@@ -1331,7 +1331,7 @@ const styles = StyleSheet.create({
   },
   scoreDigit: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     minWidth: 20,
     textAlign: 'center',
   },
@@ -1342,7 +1342,7 @@ const styles = StyleSheet.create({
   },
   setScore: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   centerText: {
     textAlign: 'center',
@@ -1365,7 +1365,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[0.5],
     borderRadius: theme.borderRadius.full,
     overflow: 'hidden',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   setScoreContainer: {
     flexDirection: 'row',
@@ -1375,8 +1375,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', // Center content vertically
   },
   scoreValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     textAlignVertical: 'center',
   },
   tiebreakValue: {

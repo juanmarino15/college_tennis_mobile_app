@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[0.5],
   },
   tabDate: {
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   applyButton: {},
   buttonText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

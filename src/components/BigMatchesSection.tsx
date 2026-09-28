@@ -374,14 +374,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   viewAllButton: {
     paddingVertical: theme.spacing[1],
   },
   viewAllText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   loadingContainer: {
     padding: theme.spacing[8],
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   vsText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   rankBadge: {
     position: 'absolute',
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   rankText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   matchLabels: {
     flexDirection: 'row',

@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[2],
   },
   filterOptions: {
@@ -1115,7 +1115,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   matchCard: {
     borderRadius: theme.borderRadius.lg,
@@ -1150,7 +1150,7 @@ const styles = StyleSheet.create({
   },
   score: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   time: {
     fontSize: theme.typography.fontSize.base,
@@ -1233,7 +1233,7 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   dateRangeContainer: {
     backgroundColor: 'white',
