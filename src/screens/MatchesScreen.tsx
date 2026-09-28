@@ -1,5 +1,5 @@
 // src/screens/MatchesScreen.tsx
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {format} from 'date-fns';
 import {api} from '../api';
+import cacheService from '../services/cacheService';
 import theme from '../theme';
 import {Match, Team} from '../api';
 import {ThemeContext} from '../../App';
@@ -96,8 +97,12 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
 
   // const [showEndDatePicker, setShowEndDatePicker] = useState<boolean>(false);
 
+  // Ignore responses from requests that were superseded (e.g. quick date changes)
+  const fetchIdRef = useRef(0);
+
   // Fetch matches based on selected date
   const fetchMatches = async () => {
+    const fetchId = ++fetchIdRef.current;
     try {
       setLoading(true);
 
@@ -136,30 +141,31 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         }
       }
 
-      // Fetch scores for completed matches
+      // Fetch scores for completed matches; a missing score doesn't fail the list
       const completedMatches = matchesData.filter(match => match.completed);
-      const scorePromises = completedMatches.map(match =>
-        api.matches.getScore(match.id),
+      const scoresMap = await api.matches.getScores(
+        completedMatches.map(match => match.id),
       );
-      const scoreResults = await Promise.all(scorePromises);
 
-      // Create scores map
-      const scoresMap: any = {};
-      completedMatches.forEach((match, index) => {
-        scoresMap[match.id] = scoreResults[index];
-      });
-
+      if (fetchId !== fetchIdRef.current) {
+        return;
+      }
       setMatches(matchesData);
       setTeams(teamsData);
       setMatchScores(scoresMap);
       setAvailableConferences(Array.from(conferences).sort());
       setError(null);
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) {
+        return;
+      }
       console.log('Error fetching matches:', err);
       setError('Failed to load matches. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -173,6 +179,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchMatches();
   };
 
@@ -313,7 +320,11 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         <View style={styles.matchContent}>
           {/* Home Team */}
           <View style={styles.teamContainer}>
-            <TeamLogo teamId={item.home_team_id} size="small" />
+            <TeamLogo
+              teamId={item.home_team_id}
+              name={homeTeam?.name}
+              size="large"
+            />
             <Text
               style={[
                 styles.teamName,
@@ -400,11 +411,49 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
                 </Text>
               </>
             )}
+            {/* Gender and conference tags under the score, so the card
+                needs no extra row */}
+            <View style={styles.metaRow}>
+              <Text
+                style={[
+                  styles.metaTag,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.gray[800]
+                      : theme.colors.gray[100],
+                    color: isDark
+                      ? theme.colors.text.dimDark
+                      : theme.colors.gray[600],
+                  },
+                ]}>
+                {gender === 'MALE' ? 'M' : 'W'}
+              </Text>
+              {item.is_conference_match && (
+                <Text
+                  style={[
+                    styles.metaTag,
+                    {
+                      backgroundColor: isDark
+                        ? theme.colors.primary[900]
+                        : theme.colors.primary[50],
+                      color: isDark
+                        ? theme.colors.primary[200]
+                        : theme.colors.primary[700],
+                    },
+                  ]}>
+                  Conf
+                </Text>
+              )}
+            </View>
           </View>
 
           {/* Away Team */}
           <View style={styles.teamContainer}>
-            <TeamLogo teamId={item.away_team_id} size="small" />
+            <TeamLogo
+              teamId={item.away_team_id}
+              name={awayTeam?.name}
+              size="large"
+            />
             <Text
               style={[
                 styles.teamName,
@@ -419,31 +468,6 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
             </Text>
           </View>
         </View>
-
-        {/* Gender Badge */}
-        <View style={styles.genderBadgeContainer}>
-          <Text
-            style={[
-              styles.genderBadge,
-              {
-                backgroundColor: isDark
-                  ? theme.colors.gray[800]
-                  : theme.colors.gray[100],
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {gender === 'MALE' ? 'M' : 'W'}
-          </Text>
-        </View>
-
-        {/* Conference Match Indicator */}
-        {item.is_conference_match && (
-          <View style={styles.conferenceTag}>
-            <Text style={styles.conferenceText}>Conference</Text>
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -1034,7 +1058,7 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[2],
   },
   filterOptions: {
@@ -1100,12 +1124,13 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   matchCard: {
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing[4],
-    marginBottom: theme.spacing[4],
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[3],
+    marginBottom: theme.spacing[3],
     ...theme.shadows.md,
     position: 'relative',
   },
@@ -1124,18 +1149,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   teamName: {
-    marginTop: theme.spacing[2],
+    marginTop: theme.spacing[1.5],
     textAlign: 'center',
     fontSize: theme.typography.fontSize.xs,
     fontWeight: '500',
   },
   scoreContainer: {
     alignItems: 'center',
-    paddingHorizontal: theme.spacing[2],
+    // Fixed width keeps both team columns the same size on every card
+    width: 84,
   },
   score: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   time: {
     fontSize: theme.typography.fontSize.base,
@@ -1154,18 +1180,19 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: theme.typography.fontSize.xs,
   },
-  conferenceTag: {
-    position: 'absolute',
-    top: theme.spacing[1],
-    right: theme.spacing[1],
-    backgroundColor: theme.colors.primary[100],
-    paddingHorizontal: theme.spacing[1.5],
-    paddingVertical: theme.spacing[0.25],
-    borderRadius: theme.borderRadius.full,
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing[1],
+    marginTop: theme.spacing[1.5],
   },
-  conferenceText: {
+  metaTag: {
     fontSize: 10,
-    color: theme.colors.primary[700],
+    fontWeight: '500',
+    paddingHorizontal: theme.spacing[1.5],
+    paddingVertical: 1,
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
   },
 
   dividerContainer: {
@@ -1181,19 +1208,6 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: theme.spacing[2],
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '500',
-  },
-  genderBadgeContainer: {
-    position: 'absolute',
-    top: theme.spacing[1],
-    left: theme.spacing[1],
-  },
-  genderBadge: {
-    fontSize: 10,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[0.5],
-    borderRadius: theme.borderRadius.full,
-    overflow: 'hidden',
     fontWeight: '500',
   },
   tabContainer: {
@@ -1218,7 +1232,7 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   dateRangeContainer: {
     backgroundColor: 'white',

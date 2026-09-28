@@ -1,5 +1,5 @@
 // src/screens/TeamDetailScreen.tsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import theme from '../theme';
 import TeamLogo from '../components/TeamLogo';
 import {api, Match, Team, Player} from '../api';
 import RankingHistoryChart from '../components/RankingHistoryChart';
+import cacheService from '../services/cacheService';
+import {getCurrentSeasonYear, getRecentSeasons} from '../utils/season';
 
 // Format date for display
 const formatDate = (dateString: string) => {
@@ -85,14 +87,10 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<string>('2025');
-  const [seasons] = useState<string[]>([
-    '2025',
-    '2024',
-    '2023',
-    '2022',
-    '2021',
-  ]);
+  const [selectedSeason, setSelectedSeason] = useState<string>(
+    getCurrentSeasonYear(),
+  );
+  const [seasons] = useState<string[]>(() => getRecentSeasons(5));
   const [matchScores, setMatchScores] = useState<Record<string, any>>({});
   const [matchSortOrder, setMatchSortOrder] = useState('newest');
   const [teamRanking, setTeamRanking] = useState<any>(null);
@@ -111,8 +109,13 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
     setDropdownVisible(false);
   };
 
+  // Ignore responses from requests that were superseded (e.g. quick season changes)
+  const fetchIdRef = useRef(0);
+
   // Fetch team data
   const fetchTeamData = async () => {
+    const fetchId = ++fetchIdRef.current;
+    const isStale = () => fetchId !== fetchIdRef.current;
     try {
       setLoading(true);
 
@@ -121,9 +124,14 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
       try {
         const rankingHistory = await api.rankings.getTeamRankingHistory(teamId);
-        console.log('Full ranking history:', rankingHistory);
+        if (isStale()) {
+          return;
+        }
 
-        if (rankingHistory && rankingHistory.length > 0) {
+        if (!rankingHistory || rankingHistory.length === 0) {
+          setTeamRankingHistory([]);
+          setTeamRanking(null);
+        } else {
           const seasonRankings = rankingHistory.filter((ranking: any) => {
             const rankingDate = new Date(ranking.publish_date);
             const rankingYear = rankingDate.getFullYear();
@@ -139,14 +147,18 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
           setTeamRankingHistory(seasonRankings);
 
-          // Set current ranking (most recent)
-          if (seasonRankings.length > 0) {
-            setTeamRanking(seasonRankings[0]);
-          }
+          // Current ranking is the most recent; clear it for seasons without one
+          setTeamRanking(seasonRankings.length > 0 ? seasonRankings[0] : null);
         }
       } catch (rankingErr) {
         console.log('Error fetching team ranking:', rankingErr);
-        setTeamRankingHistory([]);
+        if (!isStale()) {
+          setTeamRankingHistory([]);
+          setTeamRanking(null);
+        }
+      }
+      if (isStale()) {
+        return;
       }
 
       // Clean the team name from gender markers
@@ -161,22 +173,13 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       if (api.teams.getRoster) {
         // Use the getRoster method if available
         rosterData = await api.teams.getRoster(teamId, selectedSeason);
-        console.log(
-          '📋 Roster data from backend:',
-          JSON.stringify(rosterData, null, 2),
-        );
-        console.log(`📊 Total players: ${rosterData.length}`);
-        rosterData.slice(0, 3).forEach((player, index) => {
-          console.log(
-            `👤 Player ${index + 1}: ${player.first_name} ${
-              player.last_name
-            } - Class: ${player.class_year || 'NO CLASS'}`,
-          );
-        });
       } else {
         // Fallback to getAll players and filter by team
         const allPlayers = await api.players.getAll(teamId);
         rosterData = allPlayers || [];
+      }
+      if (isStale()) {
+        return;
       }
 
       setRoster(rosterData);
@@ -214,18 +217,28 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
         }
       });
 
-      // Fetch all opponent team data
+      // Fetch all opponent team data in one batch request
       const teamsData: Record<string, Team> = {};
-      await Promise.all(
-        Array.from(opponentIds).map(async id => {
-          try {
-            const team = await api.teams.getById(id);
-            teamsData[id] = team;
-          } catch (err) {
-            console.log(`Error fetching team ${id}:`, err);
-          }
-        }),
-      );
+      if (opponentIds.size > 0) {
+        try {
+          const opponents = await api.teams.getBatch(Array.from(opponentIds));
+          // Key by the IDs we asked for; the API may return them in another case
+          const byUpperId = new Map(
+            opponents.filter(Boolean).map(o => [o.id.toUpperCase(), o]),
+          );
+          opponentIds.forEach(id => {
+            const opponent = byUpperId.get(id.toUpperCase());
+            if (opponent) {
+              teamsData[id] = opponent;
+            }
+          });
+        } catch (err) {
+          console.log('Error fetching opponent teams:', err);
+        }
+      }
+      if (isStale()) {
+        return;
+      }
 
       setOpponentTeams(teamsData);
       setMatches(teamMatches);
@@ -234,32 +247,30 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
       let statsData: any = null;
       if (api.stats && api.stats.getTeamStats) {
         statsData = await api.stats.getTeamStats(teamId, selectedSeason);
-        // Get scores for completed matches
+        // Get scores for completed matches; a missing score doesn't fail the page
         const completedMatches = teamMatches.filter(match => match.completed);
-        const scorePromises = completedMatches.map(match =>
-          api.matches.getScore(match.id),
+        const scoresMap = await api.matches.getScores(
+          completedMatches.map(match => match.id),
         );
-
-        const scores = await Promise.all(scorePromises);
-
-        // Create scores map
-        const scoresMap: Record<string, any> = {};
-        completedMatches.forEach((match, index) => {
-          scoresMap[match.id] = scores[index];
-        });
-
-        // Make sure to set the match scores here
+        if (isStale()) {
+          return;
+        }
         setMatchScores(scoresMap);
       }
 
       setStats(statsData);
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching team data:', err);
       setError('Failed to load team data. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -271,6 +282,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   // Handle pull-to-refresh
   const handleRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchTeamData();
   };
 
@@ -409,384 +421,257 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   if (!team) return null;
 
   // Render team header
-  const renderTeamHeader = () => (
-    <View
-      style={[
-        styles.headerCard,
-        {
-          backgroundColor: isDark
-            ? theme.colors.card.dark
-            : theme.colors.card.light,
-        },
-      ]}>
-      <View style={styles.headerContent}>
-        <TeamLogo teamId={team.id} size="large" />
-        <View style={styles.teamInfo}>
-          <Text
+  // Last five completed results for the season, most recent first
+  const recentForm = () =>
+    matches
+      .filter(match => match.completed && matchScores[match.id])
+      .sort(
+        (a, b) =>
+          new Date(b.start_date).getTime() - new Date(a.start_date).getTime(),
+      )
+      .slice(0, 5)
+      .map(match => {
+        const score = matchScores[match.id];
+        const isHome = match.home_team_id === teamId;
+        return {
+          id: match.id,
+          won: isHome ? score.home_team_won : score.away_team_won,
+          teamScore: isHome ? score.home_team_score : score.away_team_score,
+          opponentScore: isHome ? score.away_team_score : score.home_team_score,
+        };
+      });
+
+  const renderTeamHeader = () => {
+    const dim = isDark ? theme.colors.text.dimDark : theme.colors.gray[500];
+    const strong = isDark ? theme.colors.text.dark : theme.colors.text.light;
+    const statItems = stats
+      ? [
+          {label: 'Overall', w: stats.total_wins, l: stats.total_losses},
+          {
+            label: 'Conference',
+            w: stats.conference_wins,
+            l: stats.conference_losses,
+          },
+          {label: 'Home', w: stats.home_wins, l: stats.home_losses},
+          {label: 'Away', w: stats.away_wins, l: stats.away_losses},
+        ]
+      : [];
+    const form = recentForm();
+    const subtitle = [
+      team.conference ? team.conference.replace(/_/g, ' ') : null,
+      team.gender === 'MALE' ? "Men's Tennis" : "Women's Tennis",
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    return (
+      <View
+        style={[
+          styles.headerCard,
+          {
+            backgroundColor: isDark
+              ? theme.colors.card.dark
+              : theme.colors.card.light,
+          },
+        ]}>
+        {/* Logo beside the name, FotMob style */}
+        <View style={styles.heroRow}>
+          <TeamLogo teamId={team.id} name={team.name} size="xlarge" />
+          <View style={styles.heroText}>
+            <Text style={[styles.teamName, {color: strong}]} numberOfLines={2}>
+              {team.name.replace(/\s*\((M|W)\)$/, '')}
+            </Text>
+            <Text
+              style={[styles.conferenceText, {color: dim}]}
+              numberOfLines={1}>
+              {subtitle}
+            </Text>
+            {teamRanking && (
+              <View
+                style={[
+                  styles.rankChip,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.primary[900]
+                      : theme.colors.primary[50],
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.rankChipText,
+                    {
+                      color: isDark
+                        ? theme.colors.primary[200]
+                        : theme.colors.primary[700],
+                    },
+                  ]}>
+                  #{teamRanking.rank} ITA
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Season Selector */}
+        <View style={styles.seasonSelector}>
+          <TouchableOpacity
             style={[
-              styles.teamName,
+              styles.dropdownButton,
               {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
+                backgroundColor: isDark
+                  ? theme.colors.background.dark
+                  : theme.colors.gray[50],
+                borderColor: isDark
+                  ? theme.colors.border.dark
+                  : theme.colors.border.light,
               },
-            ]}>
-            {teamRanking ? `#${teamRanking.rank} ` : ''}
-            {team.name}
-          </Text>
-          {team.conference && (
+            ]}
+            onPress={toggleDropdown}>
+            <Icon name="calendar" size={16} color={theme.colors.primary[500]} />
             <Text
               style={[
-                styles.conferenceText,
+                styles.dropdownLabel,
                 {
                   color: isDark
-                    ? theme.colors.text.dimDark
-                    : theme.colors.gray[500],
+                    ? theme.colors.text.dark
+                    : theme.colors.text.light,
                 },
               ]}>
-              {team.conference.replace(/_/g, ' ')}
+              {selectedSeason}-{parseInt(selectedSeason) + 1} Season
             </Text>
-          )}
-          <Text
-            style={[
-              styles.genderText,
-              {
-                color: isDark
-                  ? theme.colors.text.dimDark
-                  : theme.colors.gray[500],
-              },
-            ]}>
-            {team.gender === 'MALE' ? "Men's" : "Women's"} Tennis
-          </Text>
-        </View>
-      </View>
+            <Icon
+              name="chevron-down"
+              size={16}
+              color={
+                isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
+              }
+            />
+          </TouchableOpacity>
 
-      {/* Season Selector */}
-      <View style={styles.seasonSelector}>
-        <TouchableOpacity
-          style={[
-            styles.dropdownButton,
-            {
-              backgroundColor: isDark
-                ? theme.colors.background.dark
-                : theme.colors.gray[50],
-              borderColor: isDark
-                ? theme.colors.border.dark
-                : theme.colors.border.light,
-            },
-          ]}
-          onPress={toggleDropdown}>
-          <Icon name="calendar" size={16} color={theme.colors.primary[500]} />
-          <Text
-            style={[
-              styles.dropdownLabel,
-              {
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {selectedSeason}-{parseInt(selectedSeason) + 1} Season
-          </Text>
-          <Icon
-            name="chevron-down"
-            size={16}
-            color={isDark ? theme.colors.text.dimDark : theme.colors.gray[500]}
-          />
-        </TouchableOpacity>
-
-        {/* Dropdown Modal */}
-        <Modal
-          visible={dropdownVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setDropdownVisible(false)}>
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setDropdownVisible(false)}>
-            <View
-              style={[
-                styles.dropdownMenu,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.card.dark
-                    : theme.colors.card.light,
-                  top: 220, // Position below the dropdown button
-                },
-              ]}>
-              {seasons.map(season => (
-                <TouchableOpacity
-                  key={season}
-                  style={[
-                    styles.dropdownItem,
-                    selectedSeason === season && {
-                      backgroundColor: isDark
-                        ? theme.colors.primary[900]
-                        : theme.colors.primary[50],
-                    },
-                  ]}
-                  onPress={() => selectSeason(season)}>
-                  <Text
+          {/* Dropdown Modal */}
+          <Modal
+            visible={dropdownVisible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setDropdownVisible(false)}>
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setDropdownVisible(false)}>
+              <View
+                style={[
+                  styles.dropdownMenu,
+                  {
+                    backgroundColor: isDark
+                      ? theme.colors.card.dark
+                      : theme.colors.card.light,
+                  },
+                ]}>
+                {seasons.map(season => (
+                  <TouchableOpacity
+                    key={season}
                     style={[
-                      styles.dropdownItemText,
-                      {
-                        color: isDark
-                          ? theme.colors.text.dark
-                          : theme.colors.text.light,
-                      },
+                      styles.dropdownItem,
                       selectedSeason === season && {
-                        color: isDark
-                          ? theme.colors.primary[400]
-                          : theme.colors.primary[600],
-                        fontWeight: '600',
+                        backgroundColor: isDark
+                          ? theme.colors.primary[900]
+                          : theme.colors.primary[50],
                       },
-                    ]}>
-                    {season}-{parseInt(season) + 1}
+                    ]}
+                    onPress={() => selectSeason(season)}>
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        {
+                          color: isDark
+                            ? theme.colors.text.dark
+                            : theme.colors.text.light,
+                        },
+                        selectedSeason === season && {
+                          color: isDark
+                            ? theme.colors.primary[400]
+                            : theme.colors.primary[600],
+                          fontWeight: '500',
+                        },
+                      ]}>
+                      {season}-{parseInt(season) + 1}
+                    </Text>
+                    {selectedSeason === season && (
+                      <Icon
+                        name="check"
+                        size={16}
+                        color={theme.colors.primary[500]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        </View>
+
+        {/* Season record: one strip instead of four boxed tiles */}
+        {stats && (
+          <View
+            style={[
+              styles.statsStrip,
+              {
+                borderTopColor: theme.colors.divider,
+              },
+            ]}>
+            {statItems.map((item, index) => (
+              <View
+                key={item.label}
+                style={[
+                  styles.statCell,
+                  index > 0 && {
+                    borderLeftWidth: StyleSheet.hairlineWidth,
+                    borderLeftColor: theme.colors.divider,
+                  },
+                ]}>
+                <Text style={[styles.statValue, {color: strong}]}>
+                  {item.w}-{item.l}
+                </Text>
+                <Text style={[styles.statLabel, {color: dim}]}>
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Last five results */}
+        {form.length > 0 && (
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, {color: dim}]}>Last 5</Text>
+            <View style={styles.formChips}>
+              {form.map(result => (
+                <TouchableOpacity
+                  key={result.id}
+                  onPress={() => navigateToMatch(result.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${result.won ? 'Won' : 'Lost'} ${
+                    result.teamScore
+                  } to ${result.opponentScore}`}
+                  style={[
+                    styles.formChip,
+                    {
+                      backgroundColor: result.won
+                        ? theme.colors.success
+                        : theme.colors.error,
+                    },
+                  ]}>
+                  <Text style={styles.formChipText}>
+                    {result.teamScore}-{result.opponentScore}
                   </Text>
-                  {selectedSeason === season && (
-                    <Icon
-                      name="check"
-                      size={16}
-                      color={theme.colors.primary[500]}
-                    />
-                  )}
                 </TouchableOpacity>
               ))}
             </View>
-          </TouchableOpacity>
-        </Modal>
+          </View>
+        )}
       </View>
-
-      {/* Team Stats */}
-      {stats && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statsRow}>
-            <View
-              style={[
-                styles.statCard,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[50],
-                  borderColor: isDark
-                    ? theme.colors.border.dark
-                    : theme.colors.border.light,
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.statValue,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dark
-                      : theme.colors.text.light,
-                  },
-                ]}>
-                {stats.total_wins}-{stats.total_losses}
-              </Text>
-              <Text
-                style={[
-                  styles.statLabel,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[500],
-                  },
-                ]}>
-                Overall
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statCard,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[50],
-                  borderColor: isDark
-                    ? theme.colors.border.dark
-                    : theme.colors.border.light,
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.statValue,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dark
-                      : theme.colors.text.light,
-                  },
-                ]}>
-                {stats.conference_wins}-{stats.conference_losses}
-              </Text>
-              <Text
-                style={[
-                  styles.statLabel,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[500],
-                  },
-                ]}>
-                Conference
-              </Text>
-            </View>
-          </View>
-          <View style={styles.statsRow}>
-            <View
-              style={[
-                styles.statCard,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[50],
-                  borderColor: isDark
-                    ? theme.colors.border.dark
-                    : theme.colors.border.light,
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.statValue,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dark
-                      : theme.colors.text.light,
-                  },
-                ]}>
-                {stats.home_wins}-{stats.home_losses}
-              </Text>
-              <Text
-                style={[
-                  styles.statLabel,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[500],
-                  },
-                ]}>
-                Home
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statCard,
-                {
-                  backgroundColor: isDark
-                    ? theme.colors.background.dark
-                    : theme.colors.gray[50],
-                  borderColor: isDark
-                    ? theme.colors.border.dark
-                    : theme.colors.border.light,
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.statValue,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dark
-                      : theme.colors.text.light,
-                  },
-                ]}>
-                {stats.away_wins}-{stats.away_losses}
-              </Text>
-              <Text
-                style={[
-                  styles.statLabel,
-                  {
-                    color: isDark
-                      ? theme.colors.text.dimDark
-                      : theme.colors.gray[500],
-                  },
-                ]}>
-                Away
-              </Text>
-            </View>
-          </View>
-
-          {/* ADD THE RANKING ROW RIGHT HERE
-          {teamRanking && (
-            <View style={styles.statsRow}>
-              <View
-                style={[
-                  styles.statCard,
-                  {
-                    backgroundColor: isDark
-                      ? theme.colors.background.dark
-                      : theme.colors.gray[50],
-                    borderColor: isDark
-                      ? theme.colors.border.dark
-                      : theme.colors.border.light,
-                  },
-                ]}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  #{teamRanking.rank}
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  Ranking
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.statCard,
-                  {
-                    backgroundColor: isDark
-                      ? theme.colors.background.dark
-                      : theme.colors.gray[50],
-                    borderColor: isDark
-                      ? theme.colors.border.dark
-                      : theme.colors.border.light,
-                  },
-                ]}>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dark
-                        : theme.colors.text.light,
-                    },
-                  ]}>
-                  {teamRanking.publish_date
-                    ? format(new Date(teamRanking.publish_date), 'MMM d')
-                    : 'Latest'}
-                </Text>
-                <Text
-                  style={[
-                    styles.statLabel,
-                    {
-                      color: isDark
-                        ? theme.colors.text.dimDark
-                        : theme.colors.gray[500],
-                    },
-                  ]}>
-                  Updated
-                </Text>
-              </View>
-            </View>
-          )} */}
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   // Render roster section
   const renderRoster = () => (
@@ -1034,7 +919,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                     color: isDark
                       ? theme.colors.primary[400]
                       : theme.colors.primary[600],
-                    fontWeight: '600',
+                    fontWeight: '500',
                   },
                   {
                     color:
@@ -1069,7 +954,7 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                     color: isDark
                       ? theme.colors.primary[400]
                       : theme.colors.primary[600],
-                    fontWeight: '600',
+                    fontWeight: '500',
                   },
                   {
                     color:
@@ -1152,7 +1037,8 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
                   if (teamWon) {
                     scoreDisplay = `W, ${score.away_team_score}-${score.home_team_score}`;
                   } else {
-                    scoreDisplay = `L, ${score.home_team_score}-${score.away_team_score}`;
+                    // This team's score first, like every other result
+                    scoreDisplay = `L, ${score.away_team_score}-${score.home_team_score}`;
                   }
                 }
               } else {
@@ -1221,7 +1107,11 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
                   {/* Opponent Section */}
                   <View style={styles.matchOpponentSection}>
-                    <TeamLogo teamId={opponentId || ''} size="small" />
+                    <TeamLogo
+                      teamId={opponentId || ''}
+                      name={getOpponentName(match)}
+                      size="medium"
+                    />
                     <Text
                       style={[
                         styles.opponentName,
@@ -1347,6 +1237,9 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
         <TouchableOpacity
           style={styles.headerBackButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
           activeOpacity={0.7}>
           <Icon
             name="arrow-left"
@@ -1407,8 +1300,8 @@ const styles = StyleSheet.create({
     top: 50,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
   headerContent: {
@@ -1419,7 +1312,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: theme.spacing[4],
-    paddingBottom: theme.spacing[40], // Extra space at bottom for bottom navigation
+    paddingBottom: theme.spacing[24], // Extra space at bottom for bottom navigation
   },
   loadingText: {
     marginTop: theme.spacing[4],
@@ -1448,7 +1341,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   headerCard: {
     borderRadius: theme.borderRadius.lg,
@@ -1456,26 +1349,36 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
     ...theme.shadows.md,
   },
-  teamInfo: {
+  heroRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing[2],
+  },
+  heroText: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: theme.spacing[3],
   },
   teamName: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: '600',
   },
   conferenceText: {
-    fontSize: theme.typography.fontSize.base,
-    marginTop: theme.spacing[1],
+    fontSize: theme.typography.fontSize.sm,
+    marginTop: 2,
   },
-  genderText: {
-    fontSize: theme.typography.fontSize.base,
-    marginTop: theme.spacing[1],
+  rankChip: {
+    alignSelf: 'flex-start',
+    marginTop: theme.spacing[1.5],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+  },
+  rankChipText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '600',
   },
   seasonSelector: {
-    marginTop: theme.spacing[4],
-    alignItems: 'center',
+    marginTop: theme.spacing[3],
     zIndex: 1000,
   },
   dropdownButton: {
@@ -1486,7 +1389,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing[3],
     paddingVertical: theme.spacing[2],
-    minWidth: 200,
   },
   dropdownLabel: {
     fontSize: theme.typography.fontSize.base,
@@ -1502,12 +1404,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dropdownMenu: {
-    position: 'absolute',
     width: 220,
     borderRadius: theme.borderRadius.md,
     ...theme.shadows.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: theme.colors.divider,
     maxHeight: 300,
   },
   dropdownItem: {
@@ -1517,30 +1418,53 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   dropdownItemText: {
     fontSize: theme.typography.fontSize.base,
   },
-  statsContainer: {
-    marginTop: theme.spacing[4],
-  },
-  statsRow: {
+  statsStrip: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing[3],
+    marginTop: theme.spacing[3],
+    paddingTop: theme.spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  statCard: {
+  statCell: {
     flex: 1,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    padding: theme.spacing[3],
     alignItems: 'center',
-    marginHorizontal: theme.spacing[1],
   },
   statValue: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  formRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing[3],
+    paddingTop: theme.spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.divider,
+  },
+  formLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '500',
+  },
+  formChips: {
+    flexDirection: 'row',
+    gap: theme.spacing[1.5],
+  },
+  formChip: {
+    minWidth: 38,
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: theme.spacing[1.5],
+    borderRadius: theme.borderRadius.md,
+  },
+  formChipText: {
+    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: theme.typography.fontSize.xs,
@@ -1564,7 +1488,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
     marginLeft: theme.spacing[2],
   },
   sortToggleContainer: {
@@ -1624,11 +1548,11 @@ const styles = StyleSheet.create({
   },
   matchDateWeekday: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   matchDate: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   matchLocation: {
     fontSize: theme.typography.fontSize.xs,
@@ -1662,7 +1586,7 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   matchTime: {
     fontSize: theme.typography.fontSize.sm,
@@ -1712,7 +1636,7 @@ const styles = StyleSheet.create({
   },
   playerNameSingle: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[1],
   },
   playerMetaRow: {

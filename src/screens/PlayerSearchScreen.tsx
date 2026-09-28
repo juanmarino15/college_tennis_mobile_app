@@ -1,5 +1,5 @@
 // src/screens/PlayerSearchScreen.tsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
+import cacheService from '../services/cacheService';
 
 // Define navigation types
 type RootStackParamList = {
@@ -62,6 +63,8 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [selectedGender, setSelectedGender] = useState<string>('MALE');
 
+  const searchIdRef = useRef(0);
+
   // Search players using the API
   const searchPlayers = async () => {
     if (!searchQuery.trim() || searchQuery.trim().length < 2) {
@@ -70,23 +73,33 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
       return;
     }
 
+    // A slower earlier search must not overwrite results for newer text
+    const fetchId = ++searchIdRef.current;
+    const isStale = () => fetchId !== searchIdRef.current;
     try {
       setLoading(true);
       setError(null);
       const results = await api.players.search(
         searchQuery.trim(),
         selectedGender,
-        // '2024', // Current season
       );
+      if (isStale()) {
+        return;
+      }
       setSearchResults(results || []);
       setSearchPerformed(true);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error searching players:', err);
       setError('Failed to search players. Please try again.');
       setSearchResults([]);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -96,6 +109,7 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
       if (searchQuery.trim().length >= 2) {
         searchPlayers();
       } else {
+        searchIdRef.current++; // drop any in-flight search
         setSearchResults([]);
         setSearchPerformed(false);
       }
@@ -107,6 +121,7 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     searchPlayers();
   };
 
@@ -178,13 +193,18 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
                     ? theme.colors.text.dark
                     : theme.colors.text.light,
                 },
-              ]}>
+              ]}
+              numberOfLines={1}>
               {playerName}
             </Text>
             <View style={styles.playerMeta}>
               <View style={styles.teamInfo}>
                 {item.team_id && (
-                  <TeamLogo teamId={item.team_id} size="small" />
+                  <TeamLogo
+                    teamId={item.team_id}
+                    name={teamName}
+                    size="xsmall"
+                  />
                 )}
                 <Text
                   style={[
@@ -194,7 +214,8 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
                         ? theme.colors.text.dimDark
                         : theme.colors.gray[600],
                     },
-                  ]}>
+                  ]}
+                  numberOfLines={1}>
                   {teamName}
                 </Text>
               </View>
@@ -455,7 +476,11 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
             autoFocus={true}
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={18}
@@ -516,7 +541,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   searchBar: {
     flexDirection: 'row',
@@ -569,7 +594,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[1],
   },
   playerMeta: {
@@ -598,7 +623,7 @@ const styles = StyleSheet.create({
   },
   wtnText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.primary[700],
   },
   centerContainer: {
@@ -634,7 +659,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

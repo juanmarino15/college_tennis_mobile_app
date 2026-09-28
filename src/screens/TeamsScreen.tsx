@@ -16,6 +16,7 @@ import {ThemeContext} from '../../App';
 import theme from '../theme';
 import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
+import cacheService from '../services/cacheService';
 
 // Define navigation types
 type RootStackParamList = {
@@ -79,6 +80,7 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchTeams();
   };
 
@@ -150,7 +152,7 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
         onPress={() => handleTeamPress(item.id)}
         activeOpacity={0.7}>
         <View style={styles.teamContent}>
-          <TeamLogo teamId={item.id} size="medium" />
+          <TeamLogo teamId={item.id} name={item.name} size="medium" />
           <View style={styles.teamInfoContainer}>
             <Text
               style={[
@@ -348,7 +350,11 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
             autoFocus={true}
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={18}
@@ -429,7 +435,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   conferenceText: {
     fontSize: theme.typography.fontSize.sm,
@@ -481,7 +487,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

@@ -16,21 +16,26 @@ interface CacheConfig {
   batch: number;
 }
 
+const FIVE_MINUTES = 5 * 60 * 1000;
 const FIVE_HOURS = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+// How long pull-to-refresh skips cached reads for the requests it triggers
+const FORCE_REFRESH_WINDOW = 15 * 1000;
 
 const DEFAULT_CACHE_CONFIG: CacheConfig = {
   rankings: TWENTY_FOUR_HOURS, // Rankings update weekly
   tournaments: FIVE_HOURS,
   stats: FIVE_HOURS,
-  matches: FIVE_HOURS,
+  matches: FIVE_MINUTES, // Scores change during match days
   profiles: TWENTY_FOUR_HOURS, // Player/team profiles rarely change
-  batch: FIVE_HOURS,
+  batch: FIVE_MINUTES, // Holds match scores
 };
 
 class CacheService {
   private config: CacheConfig;
   private keyPrefix = '@tennis_cache:';
+  private forceRefreshUntil = 0;
 
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = {...DEFAULT_CACHE_CONFIG, ...config};
@@ -104,10 +109,12 @@ class CacheService {
     params: any,
     apiCall: () => Promise<T>,
   ): Promise<T> {
-    // Try to get from cache first
-    const cached = await this.get<T>(category, params);
-    if (cached !== null) {
-      return cached;
+    // Try to get from cache first, unless a pull-to-refresh asked for fresh data
+    if (Date.now() >= this.forceRefreshUntil) {
+      const cached = await this.get<T>(category, params);
+      if (cached !== null) {
+        return cached;
+      }
     }
 
     // If not in cache, make API call
@@ -118,6 +125,49 @@ class CacheService {
     await this.set(category, params, data);
 
     return data;
+  }
+
+  /**
+   * Make cached calls hit the network for the next few seconds (pull-to-refresh).
+   * Fresh responses still overwrite the cache.
+   */
+  forceRefresh(): void {
+    this.forceRefreshUntil = Date.now() + FORCE_REFRESH_WINDOW;
+  }
+
+  /**
+   * Remove expired entries. Keys include dates, IDs and search text, so entries
+   * that are never read again would otherwise pile up in AsyncStorage forever.
+   */
+  async pruneExpired(): Promise<void> {
+    try {
+      const keys = (await AsyncStorage.getAllKeys()).filter(key =>
+        key.startsWith(this.keyPrefix),
+      );
+      if (keys.length === 0) {
+        return;
+      }
+      const now = Date.now();
+      const entries = await AsyncStorage.multiGet(keys);
+      const expired = entries
+        .filter(([, value]) => {
+          if (!value) {
+            return true;
+          }
+          try {
+            const entry: CacheEntry<unknown> = JSON.parse(value);
+            return now - entry.timestamp > entry.ttl;
+          } catch {
+            return true;
+          }
+        })
+        .map(([key]) => key);
+      if (expired.length > 0) {
+        await AsyncStorage.multiRemove(expired);
+      }
+    } catch (error) {
+      console.log('Cache prune error:', error);
+    }
   }
 }
 

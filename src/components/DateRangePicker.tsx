@@ -195,7 +195,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   ]}>
                   {mode === 'single' ? 'Select Date' : 'Select Date Range'}
                 </Text>
-                <TouchableOpacity onPress={handleCancel}>
+                <TouchableOpacity
+                  onPress={handleCancel}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
                   <Icon
                     name="x"
                     size={24}
@@ -536,7 +540,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -553,7 +557,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[0.5],
   },
   tabDate: {
@@ -604,7 +608,7 @@ const styles = StyleSheet.create({
   applyButton: {},
   buttonText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

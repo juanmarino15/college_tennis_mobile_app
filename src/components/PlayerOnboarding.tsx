@@ -14,6 +14,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import {api} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
+import {loadWithSeasonFallback} from '../utils/season';
 
 // Define interfaces for the component props
 interface PlayerOnboardingProps {
@@ -98,10 +99,12 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
     try {
       // Use the new search endpoint
       console.log(searchQuery);
-      const results = await api.players.search(
-        searchQuery,
-        preferredGender, // This will now be 'MALE' or 'FEMALE'
-        '2025', // Current season
+      const {data: results} = await loadWithSeasonFallback(season =>
+        api.players.search(
+          searchQuery,
+          preferredGender, // This will now be 'MALE' or 'FEMALE'
+          season,
+        ),
       );
 
       if (results && results.length > 0) {
@@ -199,7 +202,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
         </Text>
         {item.team_id && (
           <View style={styles.playerTeamInfo}>
-            <TeamLogo teamId={item.team_id} size="small" />
+            <TeamLogo teamId={item.team_id} size="xsmall" />
             <View style={styles.teamInfoText}>
               <Text
                 style={[
@@ -381,7 +384,11 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
           returnKeyType="search"
         />
         {searchQuery !== '' && (
-          <TouchableOpacity onPress={clearSearch}>
+          <TouchableOpacity
+            onPress={clearSearch}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+            hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
             <Icon
               name="x"
               size={20}
@@ -549,7 +556,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: 'bold',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: theme.spacing[2],
   },
@@ -573,7 +580,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   selectionIndicator: {
     marginBottom: theme.spacing[2],
@@ -612,7 +619,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -622,7 +629,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   playerTeamInfo: {
     flexDirection: 'row',
@@ -693,7 +700,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   buttonsContainer: {
     alignItems: 'center',
@@ -710,7 +717,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   skipButton: {
     padding: theme.spacing[2],
@@ -736,7 +743,7 @@ const styles = StyleSheet.create({
   },
   utrValue: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: theme.colors.primary[600],
   },
 });

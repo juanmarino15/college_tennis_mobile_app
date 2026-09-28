@@ -24,6 +24,8 @@ export interface ThemeColors {
   white: string;
   black: string;
   transparent: string;
+  // Hairlines and separators; visible on both light and dark cards
+  divider: string;
   background: {
     light: string;
     dark: string;
@@ -136,6 +138,7 @@ const colors: ThemeColors = {
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
+  divider: 'rgba(128, 128, 128, 0.25)',
 
   // App specific - using your dark theme values
   background: {
@@ -147,9 +150,9 @@ const colors: ThemeColors = {
     dark: '#111111', // From your dark.card
   },
   text: {
-    light: '#111827',
+    light: '#222222',
     dark: '#ffffff', // From your dark.text
-    dimLight: '#6B7280',
+    dimLight: '#717171',
     dimDark: '#a0a0a0', // From your dark.text-dim
   },
   border: {
@@ -166,15 +169,17 @@ const typography: Typography = {
     semiBold: 'System',
     bold: 'System',
   },
+  // Compact scale (modelled on FotMob): 13 body, 12 secondary, 14 section
+  // headers, 19 page titles
   fontSize: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 20,
-    '2xl': 24,
-    '3xl': 30,
-    '4xl': 36,
+    xs: 11,
+    sm: 12,
+    base: 13,
+    lg: 14,
+    xl: 16,
+    '2xl': 19,
+    '3xl': 22,
+    '4xl': 28,
   },
   lineHeight: {
     none: 1,
@@ -188,6 +193,7 @@ const typography: Typography = {
 const spacing: Record<string | number, number> = {
   px: 1,
   0: 0,
+  0.25: 1,
   0.5: 2,
   1: 4,
   1.5: 6,
@@ -202,8 +208,15 @@ const spacing: Record<string | number, number> = {
   8: 32,
   9: 36,
   10: 40,
-  // Additional values omitted for brevity
-  // Include remaining values from original spacing
+  11: 44,
+  12: 48,
+  14: 56,
+  16: 64,
+  20: 80,
+  24: 96,
+  28: 112,
+  32: 128,
+  40: 160,
 };
 
 // Border radius
@@ -211,9 +224,9 @@ const borderRadius: Record<string, number> = {
   none: 0,
   sm: 2,
   DEFAULT: 4,
-  md: 6,
-  lg: 8,
-  xl: 12,
+  md: 8,
+  lg: 16, // cards
+  xl: 20,
   '2xl': 16,
   '3xl': 24,
   full: 9999,
@@ -235,19 +248,20 @@ const shadows: Record<string, Shadow> = {
     shadowRadius: 3,
     elevation: 2,
   },
+  // Cards are flat: white on the light-grey page, no shadow
   md: {
     shadowColor: colors.black,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   lg: {
     shadowColor: colors.black,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   xl: {
     shadowColor: colors.black,

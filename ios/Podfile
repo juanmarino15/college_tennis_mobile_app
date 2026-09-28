@@ -36,5 +36,15 @@ target 'TennisU' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # fmt 11.0.2 (bundled with React Native 0.78) doesn't compile as C++20 with
+    # the newer Clang in recent Xcode releases ("call to consteval function ...
+    # is not a constant expression"). Build just that pod as C++17.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end

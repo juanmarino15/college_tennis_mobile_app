@@ -31,6 +31,7 @@ type TournamentsNavigationProp = StackNavigationProp<RootStackParamList>;
 
 // Import the Tournament types from api
 import {Tournament, TournamentsResponse} from '../api';
+import cacheService from '../services/cacheService';
 
 interface TournamentsSectionProps {
   dateFrom: Date;
@@ -122,6 +123,7 @@ const TournamentsSection: React.FC<TournamentsSectionProps> = ({
 
   // Handle refresh
   const onRefresh = () => {
+    cacheService.forceRefresh();
     fetchTournaments(true);
   };
 
@@ -573,7 +575,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
@@ -606,7 +608,7 @@ const styles = StyleSheet.create({
   },
   tournamentName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[1],
   },
   tournamentMeta: {
@@ -634,7 +636,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.primary[700],
   },
   activeStatusText: {
@@ -677,7 +679,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: theme.colors.divider,
     paddingTop: theme.spacing[2],
   },
   drawsInfo: {
@@ -703,7 +705,7 @@ const styles = StyleSheet.create({
   },
   divisionText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.primary[700],
   },
 });

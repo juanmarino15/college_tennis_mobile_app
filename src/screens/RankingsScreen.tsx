@@ -1,5 +1,5 @@
 // src/screens/RankingsScreen.tsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {api} from '../api';
 import TeamLogo from '../components/TeamLogo';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
+import cacheService from '../services/cacheService';
 
 // Define the types
 interface RankingList {
@@ -122,8 +123,14 @@ const RankingsScreen: React.FC = () => {
     return 'Unknown date';
   };
 
+  // Ignore responses from requests that were superseded (e.g. quick filter changes)
+  const listsFetchIdRef = useRef(0);
+  const rankingsFetchIdRef = useRef(0);
+
   // Fetch ranking lists based on current selections
   const fetchRankingLists = async () => {
+    const fetchId = ++listsFetchIdRef.current;
+    const isStale = () => fetchId !== listsFetchIdRef.current;
     try {
       setLoading(true);
       let lists: any = [];
@@ -134,7 +141,9 @@ const RankingsScreen: React.FC = () => {
         lists = await api.rankings.getSinglesRankingLists(divisionType, gender);
       } else if (matchFormat === 'DOUBLES') {
         lists = await api.rankings.getDoublesRankingLists(divisionType, gender);
-        console.log(lists);
+      }
+      if (isStale()) {
+        return;
       }
 
       setRankingLists(lists);
@@ -150,35 +159,49 @@ const RankingsScreen: React.FC = () => {
 
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching ranking lists:', err);
       setError('Failed to load ranking lists');
       setRankingLists([]);
       setSelectedRankingList(null);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
   // Fetch rankings for the selected list
   const fetchRankings = async (rankingListId: string) => {
+    const fetchId = ++rankingsFetchIdRef.current;
+    const isStale = () => fetchId !== rankingsFetchIdRef.current;
     try {
       setLoading(true);
 
       if (matchFormat === 'TEAM') {
         const data = await api.rankings.getTeamRankings(rankingListId);
+        if (isStale()) {
+          return;
+        }
         setTeamRankings(data);
         setPlayerRankings([]);
         setDoublesRankings([]);
       } else if (matchFormat === 'SINGLES') {
         const data = await api.rankings.getSinglesRankings(rankingListId);
+        if (isStale()) {
+          return;
+        }
         setPlayerRankings(data);
         setTeamRankings([]);
         setDoublesRankings([]);
       } else if (matchFormat === 'DOUBLES') {
-        console.log(rankingListId);
         const data: any = await api.rankings.getDoublesRankings(rankingListId);
-        console.log(data);
+        if (isStale()) {
+          return;
+        }
         setDoublesRankings(data);
         setTeamRankings([]);
         setPlayerRankings([]);
@@ -186,13 +209,18 @@ const RankingsScreen: React.FC = () => {
 
       setError(null);
     } catch (err) {
+      if (isStale()) {
+        return;
+      }
       console.log('Error fetching rankings:', err);
       setError('Failed to load rankings');
       setTeamRankings([]);
       setPlayerRankings([]);
       setDoublesRankings([]);
     } finally {
-      setLoading(false);
+      if (!isStale()) {
+        setLoading(false);
+      }
     }
   };
 
@@ -204,6 +232,7 @@ const RankingsScreen: React.FC = () => {
   // Handle refreshing
   const handleRefresh = () => {
     setRefreshing(true);
+    cacheService.forceRefresh();
     fetchRankingLists();
   };
 
@@ -270,7 +299,7 @@ const RankingsScreen: React.FC = () => {
 
       {/* Team Info */}
       <View style={styles.teamCell}>
-        <TeamLogo teamId={item.team_id} size="small" />
+        <TeamLogo teamId={item.team_id} name={item.team_name} size="xsmall" />
         <View style={styles.teamInfo}>
           <Text
             style={[
@@ -360,7 +389,7 @@ const RankingsScreen: React.FC = () => {
 
       {/* Player Info */}
       <View style={styles.teamCell}>
-        <TeamLogo teamId={item.team_id} size="small" />
+        <TeamLogo teamId={item.team_id} name={item.team_name} size="xsmall" />
         <View style={styles.teamInfo}>
           <Text
             style={[
@@ -447,7 +476,7 @@ const RankingsScreen: React.FC = () => {
 
       {/* Players & Team Info */}
       <View style={styles.teamCell}>
-        <TeamLogo teamId={item.team_id} size="small" />
+        <TeamLogo teamId={item.team_id} name={item.team_name} size="xsmall" />
         <View style={styles.teamInfo}>
           <Text
             style={[
@@ -1140,7 +1169,7 @@ const RankingsScreen: React.FC = () => {
                         color: isDark
                           ? theme.colors.primary[400]
                           : theme.colors.primary[600],
-                        fontWeight: '600',
+                        fontWeight: '500',
                       },
                     ]}>
                     {formatRankingListDate(list)}
@@ -1200,7 +1229,7 @@ const styles = StyleSheet.create({
   },
   segmentButtonText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   genderControl: {
     flexDirection: 'row',
@@ -1216,7 +1245,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   dateSelector: {
     flex: 1,
@@ -1237,11 +1266,11 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   columnHeaderText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   rankHeaderCell: {
     width: 50,
@@ -1272,7 +1301,7 @@ const styles = StyleSheet.create({
   },
   rankText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   teamCell: {
     flex: 1,
@@ -1285,7 +1314,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   conferenceText: {
     fontSize: theme.typography.fontSize.xs,
@@ -1333,7 +1362,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
@@ -1361,7 +1390,7 @@ const styles = StyleSheet.create({
   },
   datePickerTitle: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[3],
     textAlign: 'center',
   },
@@ -1375,7 +1404,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   datePickerItemText: {
     fontSize: theme.typography.fontSize.base,
@@ -1386,7 +1415,7 @@ const styles = StyleSheet.create({
   },
   secondPlayerName: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginTop: 2, // Small gap between player names
   },
 });

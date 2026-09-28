@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import {api} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
+import {getCurrentSeasonYear, loadWithSeasonFallback} from '../utils/season';
 
 // Define types for navigation
 type RootStackParamList = {
@@ -113,70 +114,58 @@ const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
         );
         setPlayersData(players);
 
-        // Fetch player teams with season parameter
+        // Each player's current season, or the previous one if the new season
+        // has no roster data yet. Players are fetched in parallel.
         const teams: Record<string, PlayerTeam> = {};
-        for (const playerId of favoritePlayers) {
-          try {
-            // Pass season '2025' to get current season data
-            const team = await api.players.getTeam(playerId, '2025');
-            teams[playerId] = team;
-          } catch (error: any) {
-            // Only log non-404 errors (404 is expected for players without current season data)
-            if (error?.response?.status !== 404) {
-              console.log(
-                `Failed to fetch team for player ${playerId}:`,
-                error,
-              );
-            }
-          }
-        }
-        setPlayerTeams(teams);
-
-        // Fetch player stats with season parameter
         const stats: Record<string, PlayerStats> = {};
-        for (const playerId of favoritePlayers) {
-          try {
-            // Pass season '2025' to get current season data
-            const playerStats = await api.players.getStats(playerId, '2025');
-            stats[playerId] = playerStats;
-          } catch (error: any) {
-            // Only log non-404 errors
-            if (error?.response?.status !== 404) {
-              console.log(
-                `Failed to fetch stats for player ${playerId}:`,
-                error,
-              );
-            }
-          }
-        }
-        setPlayerStats(stats);
-
-        // Fetch recent match results with season parameter
         const results: Record<string, PlayerMatchResult[]> = {};
-        for (const playerId of favoritePlayers) {
-          try {
-            // Pass season '2025' to get current season data
-            const matchResults = await api.players.getMatchResults(
-              playerId,
-              '2025',
+        const logUnexpected = (what: string, playerId: string, error: any) => {
+          // 404 is expected for players without data for the season
+          if (error?.response?.status !== 404) {
+            console.log(
+              `Failed to fetch ${what} for player ${playerId}:`,
+              error,
             );
-            // Sort by date (newest first) and take top 2
-            results[playerId] = matchResults
-              .sort(
-                (a, b) =>
-                  new Date(b.date).getTime() - new Date(a.date).getTime(),
-              )
-              .slice(0, 2);
-          } catch (error: any) {
-            // Only log non-404 errors
-            if (error?.response?.status !== 404) {
-              console.log(
-                `Failed to fetch match results for player ${playerId}:`,
-                error,
-              );
-            }
           }
-        }
+        };
+
+        await Promise.all(
+          favoritePlayers.map(async playerId => {
+            let season = getCurrentSeasonYear();
+            try {
+              const found = await loadWithSeasonFallback(s =>
+                api.players.getTeam(playerId, s),
+              );
+              teams[playerId] = found.data;
+              season = found.season;
+            } catch (error: any) {
+              logUnexpected('team', playerId, error);
+            }
+
+            const [statsResult, matchesResult] = await Promise.allSettled([
+              api.players.getStats(playerId, season),
+              api.players.getMatchResults(playerId, season),
+            ]);
+            if (statsResult.status === 'fulfilled') {
+              stats[playerId] = statsResult.value;
+            } else {
+              logUnexpected('stats', playerId, statsResult.reason);
+            }
+            if (matchesResult.status === 'fulfilled') {
+              // Sort by date (newest first) and take top 2
+              results[playerId] = [...matchesResult.value]
+                .sort(
+                  (x, y) =>
+                    new Date(y.date).getTime() - new Date(x.date).getTime(),
+                )
+                .slice(0, 2);
+            } else {
+              logUnexpected('match results', playerId, matchesResult.reason);
+            }
+          }),
+        );
+        setPlayerTeams(teams);
+        setPlayerStats(stats);
         setRecentResults(results);
       } catch (error) {
         console.log('Failed to fetch players data:', error);
@@ -341,7 +330,7 @@ const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
                     </Text>
                     {team && (
                       <View style={styles.teamContainer}>
-                        <TeamLogo teamId={team.team_id} size="small" />
+                        <TeamLogo teamId={team.team_id} size="xsmall" />
                         <Text
                           numberOfLines={2}
                           style={[
@@ -520,7 +509,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   loadingContainer: {
     padding: theme.spacing[8],
@@ -544,7 +533,7 @@ const styles = StyleSheet.create({
   },
   emptyButtonText: {
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   addButton: {
     flexDirection: 'row',
@@ -563,7 +552,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   playerCard: {
     marginHorizontal: theme.spacing[4],
@@ -600,7 +589,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   teamContainer: {
     flexDirection: 'row',
@@ -623,7 +612,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: theme.typography.fontSize.xs,
@@ -631,12 +620,12 @@ const styles = StyleSheet.create({
   resultsContainer: {
     marginTop: theme.spacing[3],
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    borderTopColor: theme.colors.divider,
     paddingTop: theme.spacing[3],
   },
   resultsTitle: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: theme.spacing[2],
   },
   resultItem: {
@@ -676,7 +665,7 @@ const styles = StyleSheet.create({
   resultBadgeText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   resultScore: {
     fontSize: theme.typography.fontSize.xs,

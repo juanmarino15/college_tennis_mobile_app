@@ -15,6 +15,7 @@ import {api} from '../api';
 import theme from '../theme';
 import TeamLogo from './TeamLogo';
 import {PreferencesManager} from '../utils/preferencesManager';
+import {loadWithSeasonFallback} from '../utils/season';
 
 interface ManageFavoritesModalProps {
   isVisible: boolean;
@@ -168,10 +169,12 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
     setLoading(true);
     try {
       // Search for new players
-      const results = await api.players.search(
-        searchQuery,
-        preferredGender === 'M' ? 'MALE' : 'FEMALE',
-        '2025', // Current season
+      const {data: results} = await loadWithSeasonFallback(season =>
+        api.players.search(
+          searchQuery,
+          preferredGender === 'M' ? 'MALE' : 'FEMALE',
+          season,
+        ),
       );
 
       if (results && results.length > 0) {
@@ -275,7 +278,8 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
             {
               color: isDark ? theme.colors.text.dark : theme.colors.text.light,
             },
-          ]}>
+          ]}
+          numberOfLines={1}>
           {formatTeamName(item.name)}
         </Text>
         {item.conference && (
@@ -345,7 +349,8 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
             {
               color: isDark ? theme.colors.text.dark : theme.colors.text.light,
             },
-          ]}>
+          ]}
+          numberOfLines={1}>
           {item.first_name} {item.last_name}
         </Text>
         {item.team_name && (
@@ -357,7 +362,8 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
                   ? theme.colors.text.dimDark
                   : theme.colors.gray[600],
               },
-            ]}>
+            ]}
+            numberOfLines={1}>
             {formatTeamName(item.team_name)}
           </Text>
         )}
@@ -400,7 +406,12 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
           },
         ]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
             <Icon
               name="arrow-left"
               size={24}
@@ -511,7 +522,11 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
             returnKeyType="search"
           />
           {searchQuery !== '' && (
-            <TouchableOpacity onPress={clearSearch}>
+            <TouchableOpacity
+              onPress={clearSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={20}
@@ -620,7 +635,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   counterContainer: {
     marginBottom: theme.spacing[3],
@@ -643,7 +658,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     color: theme.colors.primary[500],
-    fontWeight: '600',
+    fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -680,7 +695,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   itemDescription: {
     fontSize: theme.typography.fontSize.sm,
@@ -696,7 +711,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -724,13 +739,13 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: 'white',
     fontSize: theme.typography.fontSize.base,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   playerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },
