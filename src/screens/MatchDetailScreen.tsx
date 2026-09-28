@@ -165,6 +165,14 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   };
 
   // Format player name helper
+  // push, not navigate: coming from a team page, navigate would jump back to
+  // that page instead of opening this team
+  const openTeam = (teamId?: string) => {
+    if (teamId) {
+      navigation.push('TeamDetail', {teamId});
+    }
+  };
+
   // Short team label: the team's abbreviation (YU, PSU) or initials from its name
   const teamShortName = (team: any): string => {
     if (!team) {
@@ -463,8 +471,16 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             },
           ]}>
           <View style={styles.teamsHeader}>
-            {/* Home Team */}
-            <View style={styles.teamColumn}>
+            {/* Home Team: tap to open the team page */}
+            <TouchableOpacity
+              style={styles.teamColumn}
+              onPress={() => openTeam(match.home_team_id)}
+              disabled={!match.home_team_id}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${
+                formatTeamName(teams.home?.name) || 'team'
+              } page`}>
               <TeamLogo teamId={match.home_team_id} size="xlarge" />
               <Text
                 style={[
@@ -495,7 +511,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                   {teams.home.conference.replace(/_/g, ' ')}
                 </Text>
               )}
-            </View>
+            </TouchableOpacity>
 
             {/* Score/VS Section */}
             <View style={styles.scoreSection}>
@@ -531,8 +547,16 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
               ) : null}
             </View>
 
-            {/* Away Team */}
-            <View style={styles.teamColumn}>
+            {/* Away Team: tap to open the team page */}
+            <TouchableOpacity
+              style={styles.teamColumn}
+              onPress={() => openTeam(match.away_team_id)}
+              disabled={!match.away_team_id}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${
+                formatTeamName(teams.away?.name) || 'team'
+              } page`}>
               <TeamLogo teamId={match.away_team_id} size="xlarge" />
               <Text
                 style={[
@@ -563,7 +587,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                   {teams.away.conference.replace(/_/g, ' ')}
                 </Text>
               )}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Match Details Row */}
