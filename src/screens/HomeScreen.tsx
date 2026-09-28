@@ -17,7 +17,6 @@ import Onboarding from '../components/Onboarding';
 import FavoriteTeamDashboard from '../components/FavoriteTeamDashboard';
 import FavoritePlayersSection from '../components/FavoritePlayerSection';
 import BigMatchesSection from '../components/BigMatchesSection';
-import TennisNewsFeed from '../components/TennisNewsFeed';
 import ManageFavoritesModal from '../components/ManageFavoritesModal';
 import cacheService from '../services/cacheService';
 
@@ -46,7 +45,6 @@ const HomeScreen = () => {
   const loadUserPreferences = async () => {
     try {
       const prefs = await PreferencesManager.initialize();
-      console.log('HomeScreen loaded preferences:', prefs);
 
       if (prefs) {
         setUserPreferences({
@@ -86,7 +84,6 @@ const HomeScreen = () => {
         onboardingCompleted: true,
       };
 
-      console.log('Saving updated preferences:', updatedPrefs);
       await PreferencesManager.savePreferences(updatedPrefs);
 
       // Update local state
@@ -195,16 +192,6 @@ const HomeScreen = () => {
           </Text>
         </View>
 
-        {/* Debug Info - remove in production */}
-        {/* <View style={styles.debugContainer}>
-            <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
-              Teams: {userPreferences.favoriteTeams.length}
-            </Text>
-            <Text style={{color: isDark ? 'white' : 'black', fontSize: 12}}>
-              Players: {userPreferences.favoritePlayers.length}
-            </Text>
-          </View> */}
-
         {/* Favorite Teams Dashboard */}
         <FavoriteTeamDashboard
           key={`teams-${refreshKey}`}
@@ -227,13 +214,6 @@ const HomeScreen = () => {
           isDark={isDark}
           onViewAll={() => openManageFavorites('players')}
         />
-
-        {/* Tennis News */}
-        {/* <TennisNewsFeed
-          preferredDivision={userPreferences.preferredDivision}
-          preferredGender={userPreferences.preferredGender}
-          isDark={isDark}
-        /> */}
 
         {/* Extra space at bottom */}
         <View style={styles.bottomPadding} />
@@ -269,13 +249,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: theme.typography.fontSize.base,
     marginTop: theme.spacing[1],
-  },
-  debugContainer: {
-    padding: 8,
-    margin: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
   },
   bottomPadding: {
     height: 80, // Extra padding for bottom navigation

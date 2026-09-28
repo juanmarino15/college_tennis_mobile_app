@@ -320,7 +320,11 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         <View style={styles.matchContent}>
           {/* Home Team */}
           <View style={styles.teamContainer}>
-            <TeamLogo teamId={item.home_team_id} size="small" />
+            <TeamLogo
+              teamId={item.home_team_id}
+              name={homeTeam?.name}
+              size="small"
+            />
             <Text
               style={[
                 styles.teamName,
@@ -411,7 +415,11 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
 
           {/* Away Team */}
           <View style={styles.teamContainer}>
-            <TeamLogo teamId={item.away_team_id} size="small" />
+            <TeamLogo
+              teamId={item.away_team_id}
+              name={awayTeam?.name}
+              size="small"
+            />
             <Text
               style={[
                 styles.teamName,

@@ -330,7 +330,7 @@ const FavoritePlayerSection: React.FC<FavoritePlayersSectionProps> = ({
                     </Text>
                     {team && (
                       <View style={styles.teamContainer}>
-                        <TeamLogo teamId={team.team_id} size="small" />
+                        <TeamLogo teamId={team.team_id} size="xsmall" />
                         <Text
                           numberOfLines={2}
                           style={[
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   resultsContainer: {
     marginTop: theme.spacing[3],
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    borderTopColor: theme.colors.divider,
     paddingTop: theme.spacing[3],
   },
   resultsTitle: {

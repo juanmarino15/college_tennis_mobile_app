@@ -24,6 +24,8 @@ export interface ThemeColors {
   white: string;
   black: string;
   transparent: string;
+  // Hairlines and separators; visible on both light and dark cards
+  divider: string;
   background: {
     light: string;
     dark: string;
@@ -136,6 +138,7 @@ const colors: ThemeColors = {
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
+  divider: 'rgba(128, 128, 128, 0.25)',
 
   // App specific - using your dark theme values
   background: {
@@ -188,6 +191,7 @@ const typography: Typography = {
 const spacing: Record<string | number, number> = {
   px: 1,
   0: 0,
+  0.25: 1,
   0.5: 2,
   1: 4,
   1.5: 6,
@@ -202,8 +206,15 @@ const spacing: Record<string | number, number> = {
   8: 32,
   9: 36,
   10: 40,
-  // Additional values omitted for brevity
-  // Include remaining values from original spacing
+  11: 44,
+  12: 48,
+  14: 56,
+  16: 64,
+  20: 80,
+  24: 96,
+  28: 112,
+  32: 128,
+  40: 160,
 };
 
 // Border radius

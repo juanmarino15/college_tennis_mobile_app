@@ -278,7 +278,8 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
             {
               color: isDark ? theme.colors.text.dark : theme.colors.text.light,
             },
-          ]}>
+          ]}
+          numberOfLines={1}>
           {formatTeamName(item.name)}
         </Text>
         {item.conference && (
@@ -348,7 +349,8 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
             {
               color: isDark ? theme.colors.text.dark : theme.colors.text.light,
             },
-          ]}>
+          ]}
+          numberOfLines={1}>
           {item.first_name} {item.last_name}
         </Text>
         {item.team_name && (
@@ -360,7 +362,8 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
                   ? theme.colors.text.dimDark
                   : theme.colors.gray[600],
               },
-            ]}>
+            ]}
+            numberOfLines={1}>
             {formatTeamName(item.team_name)}
           </Text>
         )}
@@ -403,7 +406,12 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
           },
         ]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
             <Icon
               name="arrow-left"
               size={24}
@@ -514,7 +522,11 @@ const ManageFavoritesModal: React.FC<ManageFavoritesModalProps> = ({
             returnKeyType="search"
           />
           {searchQuery !== '' && (
-            <TouchableOpacity onPress={clearSearch}>
+            <TouchableOpacity
+              onPress={clearSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={20}
@@ -699,7 +711,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -733,7 +745,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },

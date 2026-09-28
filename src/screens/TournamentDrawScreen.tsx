@@ -109,7 +109,6 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
   const fetchAvailableDraws = async () => {
     try {
       const draws = await api.tournaments.getDraws(tournamentId);
-      console.log(draws);
       setAvailableDraws(draws);
 
       // Auto-select draw based on parameters or first available
@@ -1308,6 +1307,9 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
           activeOpacity={0.7}>
           <Icon
             name="arrow-left"

@@ -49,7 +49,6 @@ export const PreferencesManager = {
   getPreferences: async () => {
     try {
       const prefs = await AsyncStorage.getItem('userPreferences');
-      console.log('Retrieved preferences:', prefs);
       return prefs ? JSON.parse(prefs) : null;
     } catch (error) {
       console.log('Failed to get preferences:', error);
@@ -60,7 +59,6 @@ export const PreferencesManager = {
   // Save all preferences
   savePreferences: async preferences => {
     try {
-      console.log('Saving preferences:', preferences);
       await AsyncStorage.setItem(
         'userPreferences',
         JSON.stringify(preferences),
@@ -120,7 +118,6 @@ export const PreferencesManager = {
         favoritePlayers: favPlayers,
       };
 
-      console.log('Updated player preferences:', updatedPrefs);
       await PreferencesManager.savePreferences(updatedPrefs);
       return updatedPrefs;
     } catch (error) {
@@ -139,7 +136,6 @@ export const PreferencesManager = {
         onboardingCompleted: true,
       };
 
-      console.log('Completing onboarding with preferences:', updatedPrefs);
       await PreferencesManager.savePreferences(updatedPrefs);
       return updatedPrefs;
     } catch (error) {

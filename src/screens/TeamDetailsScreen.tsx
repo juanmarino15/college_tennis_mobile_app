@@ -1359,6 +1359,9 @@ const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
         <TouchableOpacity
           style={styles.headerBackButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
           activeOpacity={0.7}>
           <Icon
             name="arrow-left"
@@ -1431,7 +1434,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: theme.spacing[4],
-    paddingBottom: theme.spacing[40], // Extra space at bottom for bottom navigation
+    paddingBottom: theme.spacing[24], // Extra space at bottom for bottom navigation
   },
   loadingText: {
     marginTop: theme.spacing[4],
@@ -1519,7 +1522,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     ...theme.shadows.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: theme.colors.divider,
     maxHeight: 300,
   },
   dropdownItem: {
@@ -1529,7 +1532,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   dropdownItemText: {
     fontSize: theme.typography.fontSize.base,

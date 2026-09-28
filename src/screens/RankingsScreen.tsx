@@ -299,7 +299,7 @@ const RankingsScreen: React.FC = () => {
 
       {/* Team Info */}
       <View style={styles.teamCell}>
-        <TeamLogo teamId={item.team_id} size="small" />
+        <TeamLogo teamId={item.team_id} name={item.team_name} size="xsmall" />
         <View style={styles.teamInfo}>
           <Text
             style={[
@@ -389,7 +389,7 @@ const RankingsScreen: React.FC = () => {
 
       {/* Player Info */}
       <View style={styles.teamCell}>
-        <TeamLogo teamId={item.team_id} size="small" />
+        <TeamLogo teamId={item.team_id} name={item.team_name} size="xsmall" />
         <View style={styles.teamInfo}>
           <Text
             style={[
@@ -476,7 +476,7 @@ const RankingsScreen: React.FC = () => {
 
       {/* Players & Team Info */}
       <View style={styles.teamCell}>
-        <TeamLogo teamId={item.team_id} size="small" />
+        <TeamLogo teamId={item.team_id} name={item.team_name} size="xsmall" />
         <View style={styles.teamInfo}>
           <Text
             style={[
@@ -1266,7 +1266,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   columnHeaderText: {
     fontSize: theme.typography.fontSize.sm,
@@ -1404,7 +1404,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   datePickerItemText: {
     fontSize: theme.typography.fontSize.base,

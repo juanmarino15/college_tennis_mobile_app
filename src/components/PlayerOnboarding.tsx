@@ -202,7 +202,7 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
         </Text>
         {item.team_id && (
           <View style={styles.playerTeamInfo}>
-            <TeamLogo teamId={item.team_id} size="small" />
+            <TeamLogo teamId={item.team_id} size="xsmall" />
             <View style={styles.teamInfoText}>
               <Text
                 style={[
@@ -384,7 +384,11 @@ const PlayerOnboarding: React.FC<PlayerOnboardingProps> = ({
           returnKeyType="search"
         />
         {searchQuery !== '' && (
-          <TouchableOpacity onPress={clearSearch}>
+          <TouchableOpacity
+            onPress={clearSearch}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+            hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
             <Icon
               name="x"
               size={20}
@@ -615,7 +619,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -152,7 +152,7 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
         onPress={() => handleTeamPress(item.id)}
         activeOpacity={0.7}>
         <View style={styles.teamContent}>
-          <TeamLogo teamId={item.id} size="medium" />
+          <TeamLogo teamId={item.id} name={item.name} size="medium" />
           <View style={styles.teamInfoContainer}>
             <Text
               style={[
@@ -350,7 +350,11 @@ const TeamsScreen: React.FC<TeamsScreenProps> = ({navigation}) => {
             autoFocus={true}
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={18}

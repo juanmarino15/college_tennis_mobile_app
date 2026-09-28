@@ -342,6 +342,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
         <TouchableOpacity
           style={styles.headerBackButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
           activeOpacity={0.7}>
           <Icon
             name="arrow-left"
@@ -401,7 +404,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       : theme.colors.text.light,
                   },
                   match.is_conference_match && styles.conferenceTeam,
-                ]}>
+                ]}
+                numberOfLines={2}>
                 {formatTeamName(teams.home.name)}
               </Text>
               {teams.home.conference && (
@@ -465,7 +469,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       : theme.colors.text.light,
                   },
                   match.is_conference_match && styles.conferenceTeam,
-                ]}>
+                ]}
+                numberOfLines={2}>
                 {formatTeamName(teams.away.name)}
               </Text>
               {teams.away.conference && (
@@ -651,7 +656,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                   ? theme.colors.success
                                   : theme.colors.white,
                               },
-                            ]}>
+                            ]}
+                            numberOfLines={2}>
                             {formatPlayerName(players[match.side1_player1_id])}
                             {match.side1_player2_id &&
                               ` / ${formatPlayerName(
@@ -745,7 +751,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                   ? theme.colors.success
                                   : theme.colors.white,
                               },
-                            ]}>
+                            ]}
+                            numberOfLines={2}>
                             {formatPlayerName(players[match.side2_player1_id])}
                             {match.side2_player2_id &&
                               ` / ${formatPlayerName(
@@ -903,7 +910,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                     ? theme.colors.success
                                     : theme.colors.white,
                                 },
-                              ]}>
+                              ]}
+                              numberOfLines={1}>
                               {formatPlayerName(
                                 players[match.side1_player1_id],
                               )}{' '}
@@ -986,7 +994,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                                     ? theme.colors.success
                                     : theme.colors.white,
                                 },
-                              ]}>
+                              ]}
+                              numberOfLines={1}>
                               {formatPlayerName(
                                 players[match.side2_player1_id],
                               )}{' '}

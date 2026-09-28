@@ -195,7 +195,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   ]}>
                   {mode === 'single' ? 'Select Date' : 'Select Date Range'}
                 </Text>
-                <TouchableOpacity onPress={handleCancel}>
+                <TouchableOpacity
+                  onPress={handleCancel}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
                   <Icon
                     name="x"
                     size={24}

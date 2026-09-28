@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: theme.colors.divider,
     paddingTop: theme.spacing[2],
   },
   drawsInfo: {

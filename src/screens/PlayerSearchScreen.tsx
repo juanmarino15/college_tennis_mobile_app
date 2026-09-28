@@ -193,13 +193,18 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
                     ? theme.colors.text.dark
                     : theme.colors.text.light,
                 },
-              ]}>
+              ]}
+              numberOfLines={1}>
               {playerName}
             </Text>
             <View style={styles.playerMeta}>
               <View style={styles.teamInfo}>
                 {item.team_id && (
-                  <TeamLogo teamId={item.team_id} size="small" />
+                  <TeamLogo
+                    teamId={item.team_id}
+                    name={teamName}
+                    size="xsmall"
+                  />
                 )}
                 <Text
                   style={[
@@ -209,7 +214,8 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
                         ? theme.colors.text.dimDark
                         : theme.colors.gray[600],
                     },
-                  ]}>
+                  ]}
+                  numberOfLines={1}>
                   {teamName}
                 </Text>
               </View>
@@ -470,7 +476,11 @@ const PlayerSearchScreen: React.FC<PlayerSearchScreenProps> = ({
             autoFocus={true}
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={18}

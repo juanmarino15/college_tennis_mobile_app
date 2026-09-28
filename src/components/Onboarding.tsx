@@ -296,7 +296,11 @@ const Onboarding: React.FC<OnboardingProps> = ({onComplete, isDark}) => {
             onChangeText={setSearchQuery}
           />
           {searchQuery !== '' && (
-            <TouchableOpacity onPress={clearSearch}>
+            <TouchableOpacity
+              onPress={clearSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
               <Icon
                 name="x"
                 size={20}
@@ -359,7 +363,8 @@ const Onboarding: React.FC<OnboardingProps> = ({onComplete, isDark}) => {
                             ? theme.colors.text.dark
                             : theme.colors.text.light,
                         },
-                      ]}>
+                      ]}
+                      numberOfLines={2}>
                       {team.name.replace(/\s*\([MW]\)\s*$/, '')}
                     </Text>
                     {team.conference && (

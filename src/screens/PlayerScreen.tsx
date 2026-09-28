@@ -297,13 +297,32 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
 
   const NoSeasonDataView = () => (
     <View style={styles.noDataContainer}>
-      <Text style={styles.noDataIcon}>Ã°Å¸â€œÅ </Text>
-      <Text style={styles.noDataTitle}>No Data Available</Text>
-      <Text style={styles.noDataMessage}>
+      <Icon
+        name="bar-chart-2"
+        size={48}
+        color={isDark ? theme.colors.gray[600] : theme.colors.gray[300]}
+        style={styles.noDataIcon}
+      />
+      <Text
+        style={[
+          styles.noDataTitle,
+          {color: isDark ? theme.colors.text.dark : theme.colors.text.light},
+        ]}>
+        No Data Available
+      </Text>
+      <Text
+        style={[
+          styles.noDataMessage,
+          {color: isDark ? theme.colors.text.dimDark : theme.colors.gray[600]},
+        ]}>
         This player doesn't have any recorded data for the {selectedSeason}{' '}
         season.
       </Text>
-      <Text style={styles.noDataSubtext}>
+      <Text
+        style={[
+          styles.noDataSubtext,
+          {color: isDark ? theme.colors.gray[500] : theme.colors.gray[400]},
+        ]}>
         Try selecting a different season from the dropdown above.
       </Text>
     </View>
@@ -1504,6 +1523,9 @@ const PlayerScreen: React.FC<PlayerScreenProps> = ({route, navigation}) => {
         <TouchableOpacity
           style={styles.headerBackButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
           activeOpacity={0.7}>
           <Icon
             name="arrow-left"
@@ -1556,7 +1578,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: theme.spacing[4],
-    paddingBottom: theme.spacing[40],
+    paddingBottom: theme.spacing[24],
   },
 
   // Loading and error states
@@ -1692,7 +1714,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     ...theme.shadows.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: theme.colors.divider,
     maxHeight: 300,
   },
   dropdownItem: {
@@ -1702,7 +1724,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: theme.colors.divider,
   },
   dropdownItemText: {
     fontSize: theme.typography.fontSize.base,
@@ -1735,7 +1757,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: theme.colors.divider,
   },
   statValue: {
     fontSize: theme.typography.fontSize.lg,
@@ -1906,7 +1928,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 10,
     fontWeight: '500',
-    color: '#666',
+    color: theme.colors.gray[500],
     marginLeft: 1,
     marginTop: 1,
   },
@@ -1953,26 +1975,22 @@ const styles = StyleSheet.create({
     marginTop: 60,
   },
   noDataIcon: {
-    fontSize: 64,
     marginBottom: 20,
   },
   noDataTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#333',
   },
   noDataMessage: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 8,
-    color: '#666',
     lineHeight: 24,
   },
   noDataSubtext: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#999',
     marginTop: 8,
   },
   header: {
