@@ -317,6 +317,46 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
         ]}
         onPress={() => handleMatchPress(item.id)}
         activeOpacity={0.7}>
+        {/* Gender and conference tags sit in their own row above the teams */}
+        <View style={styles.cardTopRow}>
+          <Text
+            style={[
+              styles.genderBadge,
+              {
+                backgroundColor: isDark
+                  ? theme.colors.gray[800]
+                  : theme.colors.gray[100],
+                color: isDark
+                  ? theme.colors.text.dark
+                  : theme.colors.text.light,
+              },
+            ]}>
+            {gender === 'MALE' ? 'M' : 'W'}
+          </Text>
+          {item.is_conference_match && (
+            <View
+              style={[
+                styles.conferenceTag,
+                {
+                  backgroundColor: isDark
+                    ? theme.colors.primary[900]
+                    : theme.colors.primary[50],
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.conferenceText,
+                  {
+                    color: isDark
+                      ? theme.colors.primary[200]
+                      : theme.colors.primary[700],
+                  },
+                ]}>
+                Conference
+              </Text>
+            </View>
+          )}
+        </View>
         <View style={styles.matchContent}>
           {/* Home Team */}
           <View style={styles.teamContainer}>
@@ -434,31 +474,6 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({navigation}) => {
             </Text>
           </View>
         </View>
-
-        {/* Gender Badge */}
-        <View style={styles.genderBadgeContainer}>
-          <Text
-            style={[
-              styles.genderBadge,
-              {
-                backgroundColor: isDark
-                  ? theme.colors.gray[800]
-                  : theme.colors.gray[100],
-                color: isDark
-                  ? theme.colors.text.dark
-                  : theme.colors.text.light,
-              },
-            ]}>
-            {gender === 'MALE' ? 'M' : 'W'}
-          </Text>
-        </View>
-
-        {/* Conference Match Indicator */}
-        {item.is_conference_match && (
-          <View style={styles.conferenceTag}>
-            <Text style={styles.conferenceText}>Conference</Text>
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -1119,8 +1134,10 @@ const styles = StyleSheet.create({
   },
   matchCard: {
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing[4],
-    marginBottom: theme.spacing[4],
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[3],
+    paddingBottom: theme.spacing[4],
+    marginBottom: theme.spacing[3],
     ...theme.shadows.md,
     position: 'relative',
   },
@@ -1169,18 +1186,20 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: theme.typography.fontSize.xs,
   },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing[2],
+  },
   conferenceTag: {
-    position: 'absolute',
-    top: theme.spacing[1],
-    right: theme.spacing[1],
-    backgroundColor: theme.colors.primary[100],
-    paddingHorizontal: theme.spacing[1.5],
-    paddingVertical: theme.spacing[0.25],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[0.5],
     borderRadius: theme.borderRadius.full,
   },
   conferenceText: {
     fontSize: 10,
-    color: theme.colors.primary[700],
+    fontWeight: '500',
   },
 
   dividerContainer: {
@@ -1197,11 +1216,6 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing[2],
     fontSize: theme.typography.fontSize.sm,
     fontWeight: '500',
-  },
-  genderBadgeContainer: {
-    position: 'absolute',
-    top: theme.spacing[1],
-    left: theme.spacing[1],
   },
   genderBadge: {
     fontSize: 10,

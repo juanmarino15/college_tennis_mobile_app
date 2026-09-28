@@ -104,17 +104,7 @@ const TeamLogo: React.FC<TeamLogoProps> = ({
   }
 
   return (
-    <View
-      style={[
-        styles.logoContainer,
-        box,
-        // Most college logos are dark, so give them a light backing on dark cards
-        isDark && [
-          styles.logoContainerDark,
-          {borderRadius: Math.round(dimension * 0.25)},
-        ],
-        containerStyle,
-      ]}>
+    <View style={[styles.logoContainer, box, containerStyle]}>
       <Image
         source={{uri: api.teams.getLogo(teamId)}}
         style={styles.logo}
@@ -131,10 +121,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     backgroundColor: 'transparent',
-  },
-  logoContainerDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    padding: 1,
   },
   logo: {
     width: '100%',
