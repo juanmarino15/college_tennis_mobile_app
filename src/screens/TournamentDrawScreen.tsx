@@ -5,6 +5,7 @@ import React, {
   useContext,
   useMemo,
   useCallback,
+  useRef,
 } from 'react';
 import {
   View,
@@ -25,6 +26,7 @@ import {
   TournamentDraw,
   TournamentMatch,
 } from '../api';
+import cacheService from '../services/cacheService';
 import theme from '../theme';
 import {ThemeContext} from '../../App';
 
@@ -90,6 +92,8 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
   const [activeTab, setActiveTab] = useState<string>('draw');
   const [availableStages, setAvailableStages] = useState<string[]>([]);
   const [selectedStage, setSelectedStage] = useState<string>('MAIN');
+  // Stage passed with the last draw details request, so a refresh reloads the same view
+  const detailsStage = useRef<string | undefined>(undefined);
 
   const fetchDrawStages = async (drawId: string) => {
     try {
@@ -135,6 +139,7 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
   };
 
   const fetchDrawDetails = async (drawId: string, stage?: string) => {
+    detailsStage.current = stage;
     try {
       const details = await api.tournaments.getDrawDetails(drawId, stage);
       setSelectedDraw(details);
@@ -176,9 +181,22 @@ const TournamentDrawScreen: React.FC<TournamentDrawScreenProps> = ({
     setLoading(false);
   };
 
+  // Pull-to-refresh and Retry skip the cache and keep the draw the user is looking at
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchAvailableDraws();
+    cacheService.forceRefresh();
+    if (selectedDrawId) {
+      const [draws] = await Promise.all([
+        api.tournaments.getDraws(tournamentId).catch(err => {
+          console.log('Failed to refresh available draws:', err);
+          return null;
+        }),
+        fetchDrawDetails(selectedDrawId, detailsStage.current),
+      ]);
+      if (draws) setAvailableDraws(draws);
+    } else {
+      await fetchAvailableDraws();
+    }
     setRefreshing(false);
   };
 
