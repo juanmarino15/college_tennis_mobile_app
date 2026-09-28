@@ -476,7 +476,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                   },
                   match.is_conference_match && styles.conferenceTeam,
                 ]}
-                numberOfLines={2}>
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}>
                 {formatTeamName(teams.home.name)}
               </Text>
               {teams.home.conference && (
@@ -488,7 +490,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                         ? theme.colors.text.dimDark
                         : theme.colors.gray[500],
                     },
-                  ]}>
+                  ]}
+                  numberOfLines={1}>
                   {teams.home.conference.replace(/_/g, ' ')}
                 </Text>
               )}
@@ -541,7 +544,9 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                   },
                   match.is_conference_match && styles.conferenceTeam,
                 ]}
-                numberOfLines={2}>
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}>
                 {formatTeamName(teams.away.name)}
               </Text>
               {teams.away.conference && (
@@ -553,7 +558,8 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                         ? theme.colors.text.dimDark
                         : theme.colors.gray[500],
                     },
-                  ]}>
+                  ]}
+                  numberOfLines={1}>
                   {teams.away.conference.replace(/_/g, ' ')}
                 </Text>
               )}
@@ -565,7 +571,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <View style={styles.detailItem}>
               <Icon
                 name="users"
-                size={16}
+                size={14}
                 color={
                   isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
                 }
@@ -585,7 +591,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <View style={styles.detailItem}>
               <Icon
                 name="calendar"
-                size={16}
+                size={14}
                 color={
                   isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
                 }
@@ -599,7 +605,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                       : theme.colors.gray[600],
                   },
                 ]}>
-                {safeFormat(match.start_date, 'EEEE, MMMM d, yyyy')}
+                {safeFormat(match.start_date, 'EEE, MMM d, yyyy')}
               </Text>
             </View>
 
@@ -607,7 +613,7 @@ const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
               <View style={styles.detailItem}>
                 <Icon
                   name="clock"
-                  size={16}
+                  size={14}
                   color={
                     isDark ? theme.colors.text.dimDark : theme.colors.gray[500]
                   }
@@ -1303,6 +1309,9 @@ const styles = StyleSheet.create({
   },
   teamColumn: {
     flex: 1,
+    // Let the column shrink below its content width so long names wrap
+    // instead of pushing the card wider than the screen
+    minWidth: 0,
     alignItems: 'center',
   },
   teamName: {
@@ -1321,6 +1330,7 @@ const styles = StyleSheet.create({
   },
   scoreSection: {
     alignItems: 'center',
+    flexShrink: 0,
     marginHorizontal: theme.spacing[2],
   },
   scoreText: {
@@ -1344,13 +1354,16 @@ const styles = StyleSheet.create({
   },
   detailsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap', // wraps onto a second line on narrow screens
     justifyContent: 'center',
     marginTop: theme.spacing[2],
-    gap: theme.spacing[4],
+    columnGap: theme.spacing[4],
+    rowGap: theme.spacing[1],
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
   },
   detailText: {
     marginLeft: theme.spacing[1],
